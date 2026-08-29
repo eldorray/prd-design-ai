@@ -1,0 +1,596 @@
+/* ============================================================
+   Material 3 — Google Pixel skin (scoped to .m3)
+   Palette: Google Blue seed · tonal surfaces · state layers.
+   ============================================================ */
+
+/* ---------- Light tonal palette ---------- */
+.m3 {
+    --m3-primary: oklch(0.51 0.19 262);
+    --m3-on-primary: oklch(0.98 0.005 262);
+    --m3-primary-container: oklch(0.91 0.05 262);
+    --m3-on-primary-container: oklch(0.34 0.11 262);
+
+    --m3-secondary: oklch(0.87 0.025 262);
+    --m3-on-secondary: oklch(0.3 0.05 262);
+    --m3-secondary-container: oklch(0.92 0.02 262);
+    --m3-on-secondary-container: oklch(0.35 0.05 262);
+
+    --m3-tertiary: oklch(0.75 0.1 300);
+    --m3-on-tertiary: oklch(0.25 0.06 300);
+    --m3-tertiary-container: oklch(0.92 0.04 300);
+    --m3-on-tertiary-container: oklch(0.32 0.08 300);
+
+    --m3-error: oklch(0.55 0.21 25);
+    --m3-on-error: oklch(0.98 0.01 25);
+    --m3-error-container: oklch(0.92 0.06 25);
+    --m3-on-error-container: oklch(0.4 0.16 25);
+
+    --m3-surface: oklch(0.985 0.002 262);
+    --m3-surface-1: oklch(0.975 0.006 262);
+    --m3-surface-2: oklch(0.96 0.007 262);
+    --m3-surface-3: oklch(0.945 0.009 262);
+    --m3-surface-4: oklch(0.93 0.01 262);
+    --m3-on-surface: oklch(0.22 0.01 262);
+    --m3-on-surface-var: oklch(0.5 0.02 262);
+    --m3-outline: oklch(0.62 0.02 262);
+    --m3-outline-var: oklch(0.88 0.01 262);
+    --m3-inverse-surface: oklch(0.3 0.02 262);
+    --m3-inverse-on-surface: oklch(0.95 0.005 262);
+
+    /* Shape scale */
+    --m3-shape-xs: 4px;
+    --m3-shape-sm: 8px;
+    --m3-shape-md: 12px;
+    --m3-shape-lg: 16px;
+    --m3-shape-xl: 28px;
+    --m3-shape-full: 9999px;
+
+    /* Motion — M3 emphasized easing */
+    --m3-ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Shadows (elevation 1-3) */
+    --m3-shadow-1: 0 1px 2px color-mix(in oklab, var(--m3-on-surface) 8%, transparent),
+        0 1px 3px 1px color-mix(in oklab, var(--m3-on-surface) 6%, transparent);
+    --m3-shadow-2: 0 1px 2px color-mix(in oklab, var(--m3-on-surface) 12%, transparent),
+        0 2px 6px 2px color-mix(in oklab, var(--m3-on-surface) 8%, transparent);
+    --m3-shadow-3: 0 1px 3px color-mix(in oklab, var(--m3-on-surface) 16%, transparent),
+        0 4px 8px 3px color-mix(in oklab, var(--m3-on-surface) 12%, transparent);
+
+    /* Bridge into the app's existing design tokens */
+    --background: var(--m3-surface);
+    --foreground: var(--m3-on-surface);
+    --card: var(--m3-surface-1);
+    --card-foreground: var(--m3-on-surface);
+    --popover: var(--m3-surface-2);
+    --popover-foreground: var(--m3-on-surface);
+    --primary: var(--m3-primary);
+    --primary-foreground: var(--m3-on-primary);
+    --secondary: var(--m3-secondary-container);
+    --secondary-foreground: var(--m3-on-secondary-container);
+    --muted: var(--m3-surface-2);
+    --muted-foreground: var(--m3-on-surface-var);
+    --accent: var(--m3-secondary-container);
+    --accent-foreground: var(--m3-on-secondary-container);
+    --destructive: var(--m3-error);
+    --destructive-foreground: var(--m3-on-error);
+    --border: var(--m3-outline-var);
+    --input: var(--m3-outline);
+    --ring: var(--m3-primary);
+    --radius: 0.75rem;
+}
+
+/* ---------- Dark tonal palette ---------- */
+.dark .m3 {
+    --m3-primary: oklch(0.75 0.12 262);
+    --m3-on-primary: oklch(0.28 0.11 262);
+    --m3-primary-container: oklch(0.4 0.13 262);
+    --m3-on-primary-container: oklch(0.9 0.06 262);
+
+    --m3-secondary: oklch(0.42 0.05 262);
+    --m3-on-secondary: oklch(0.9 0.03 262);
+    --m3-secondary-container: oklch(0.35 0.05 262);
+    --m3-on-secondary-container: oklch(0.9 0.03 262);
+
+    --m3-tertiary: oklch(0.82 0.08 300);
+    --m3-on-tertiary: oklch(0.3 0.08 300);
+    --m3-tertiary-container: oklch(0.45 0.1 300);
+    --m3-on-tertiary-container: oklch(0.9 0.05 300);
+
+    --m3-error: oklch(0.7 0.15 25);
+    --m3-on-error: oklch(0.28 0.12 25);
+    --m3-error-container: oklch(0.45 0.16 25);
+    --m3-on-error-container: oklch(0.9 0.06 25);
+
+    --m3-surface: oklch(0.17 0.012 262);
+    --m3-surface-1: oklch(0.21 0.014 262);
+    --m3-surface-2: oklch(0.245 0.015 262);
+    --m3-surface-3: oklch(0.28 0.016 262);
+    --m3-surface-4: oklch(0.3 0.017 262);
+    --m3-on-surface: oklch(0.93 0.005 262);
+    --m3-on-surface-var: oklch(0.75 0.015 262);
+    --m3-outline: oklch(0.62 0.02 262);
+    --m3-outline-var: oklch(0.4 0.015 262);
+    --m3-inverse-surface: oklch(0.9 0.005 262);
+    --m3-inverse-on-surface: oklch(0.25 0.01 262);
+
+    --m3-shadow-1: 0 1px 2px oklch(0 0 0 / 30%),
+        0 1px 3px 1px oklch(0 0 0 / 25%);
+    --m3-shadow-2: 0 1px 2px oklch(0 0 0 / 40%),
+        0 2px 6px 2px oklch(0 0 0 / 30%);
+    --m3-shadow-3: 0 1px 3px oklch(0 0 0 / 45%),
+        0 4px 8px 3px oklch(0 0 0 / 35%);
+}
+
+/* ---------- Typography ---------- */
+.m3 {
+    font-family: 'Google Sans', 'Product Sans', 'Roboto Flex', 'Roboto',
+        system-ui, sans-serif;
+    letter-spacing: 0.002em;
+}
+
+.m3 h1,
+.m3 h2,
+.m3 h3,
+.m3 h4 {
+    font-weight: 500;
+}
+
+/* ---------- Buttons: M3 filled as default ---------- */
+.m3 [data-slot='button'] {
+    border-radius: var(--m3-shape-full);
+    border: none;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    box-shadow: none;
+    transition:
+        box-shadow 150ms var(--m3-ease),
+        background-color 150ms var(--m3-ease),
+        transform 150ms var(--m3-ease);
+}
+
+.m3 [data-slot='button']:hover {
+    box-shadow: var(--m3-shadow-1);
+}
+
+.m3 [data-slot='button']:active {
+    transform: scale(0.97);
+}
+
+/* Outlined variant */
+.m3 [data-slot='button'][class*='outline'] {
+    background: transparent;
+    color: var(--m3-primary);
+    border: 1px solid var(--m3-outline);
+}
+
+.m3 [data-slot='button'][class*='outline']:hover {
+    background: color-mix(in oklab, var(--m3-primary) 8%, transparent);
+}
+
+/* Ghost / text variant */
+.m3 [data-slot='button'][class*='ghost'] {
+    background: transparent;
+    color: var(--m3-primary);
+    box-shadow: none;
+}
+
+.m3 [data-slot='button'][class*='ghost']:hover {
+    background: color-mix(in oklab, var(--m3-primary) 10%, transparent);
+}
+
+/* ---------- Cards: tonal elevated surface ---------- */
+.m3 [data-slot='card'] {
+    border-radius: var(--m3-shape-md);
+    border: none;
+    background: var(--m3-surface-1);
+    box-shadow: var(--m3-shadow-1);
+}
+
+/* Plain .card utility used across the dashboard page */
+.m3 .rounded-xl,
+.m3 .rounded-2xl {
+    border-radius: var(--m3-shape-md);
+}
+
+/* ---------- Inputs: M3 filled text field ---------- */
+.m3 [data-slot='input'],
+.m3 [data-slot='textarea'],
+.m3 textarea {
+    border-radius: var(--m3-shape-xs);
+    border: none;
+    background: var(--m3-surface-2);
+    color: var(--m3-on-surface);
+    outline: 1px solid var(--m3-outline-var);
+    outline-offset: -1px;
+    transition: outline-color 150ms var(--m3-ease);
+}
+
+.m3 [data-slot='input']:focus,
+.m3 [data-slot='textarea']:focus,
+.m3 textarea:focus {
+    outline: 2px solid var(--m3-primary);
+}
+
+.m3 [data-slot='select-trigger'] {
+    border-radius: var(--m3-shape-xs);
+    border: none;
+    background: var(--m3-surface-2);
+    outline: 1px solid var(--m3-outline-var);
+}
+
+/* ---------- Chips & badges: M3 8dp corner ---------- */
+.m3 [data-slot='badge'] {
+    border-radius: var(--m3-shape-sm);
+    border: 1px solid var(--m3-outline-var);
+    background: transparent;
+    color: var(--m3-on-surface-var);
+    font-weight: 500;
+    padding-inline: 12px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.m3 [data-slot='badge'][class*='secondary'] {
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+    border-color: transparent;
+}
+
+.m3 [data-slot='badge'][class*='default'] {
+    background: var(--m3-primary);
+    color: var(--m3-on-primary);
+    border-color: transparent;
+}
+
+.m3 [data-slot='badge'][class*='outline'] {
+    background: transparent;
+    color: var(--m3-on-surface-var);
+    border-color: var(--m3-outline-var);
+}
+
+/* Interview example-option chips (buttons in QuestionCard) */
+.m3 .rounded-full.border {
+    border-radius: var(--m3-shape-sm);
+}
+
+/* ---------- Dialog: M3 28dp corner ---------- */
+.m3 [data-slot='dialog-content'] {
+    border-radius: var(--m3-shape-xl);
+    background: var(--m3-surface-3);
+    border: none;
+    padding: 24px;
+}
+
+.m3 [data-slot='dialog-overlay'] {
+    background: oklch(0 0 0 / 40%);
+}
+
+/* ---------- Progress: linear indicator ---------- */
+.m3 .h-1\.5,
+.m3 .h-1 {
+    border-radius: 2px;
+}
+
+/* ---------- FAB — the Pixel signature ---------- */
+.m3-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 30;
+    height: 56px;
+    min-width: 56px;
+    padding-inline: 20px;
+    border-radius: var(--m3-shape-lg);
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+    box-shadow: var(--m3-shadow-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition:
+        box-shadow 200ms var(--m3-ease),
+        transform 200ms var(--m3-ease);
+}
+
+.m3-fab:hover {
+    box-shadow: var(--m3-shadow-3);
+}
+
+.m3-fab:active {
+    transform: scale(0.95);
+}
+
+/* ---------- Top app bar ---------- */
+.m3-appbar {
+    background: var(--m3-surface-1);
+    color: var(--m3-on-surface);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+/* ---------- Segmented / step indicator dots (Pixel setup) ---------- */
+.m3 .size-1\.5 {
+    border-radius: var(--m3-shape-full);
+}
+
+/* ---------- Hybrid Google Workspace + M3 Expressive ---------- */
+/* Surface hierarchy keeps long-form work calm while blue marks the active task. */
+.m3-workspace {
+    background: var(--m3-surface);
+}
+
+.m3-workspace-appbar {
+    background: color-mix(in oklab, var(--m3-surface) 92%, var(--m3-primary-container));
+    border-bottom: 1px solid var(--m3-outline-var);
+}
+
+.m3-workspace-canvas {
+    min-width: 0;
+}
+
+.m3-product-mark {
+    border-radius: var(--m3-shape-lg);
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.m3-skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 100;
+    transform: translateY(-160%);
+    border-radius: var(--m3-shape-sm);
+    background: var(--m3-inverse-surface);
+    color: var(--m3-inverse-on-surface);
+    padding: 10px 14px;
+}
+
+.m3-skip-link:focus {
+    transform: translateY(0);
+}
+
+.m3-history-drawer {
+    border-right: 1px solid var(--m3-outline-var);
+    background: var(--m3-surface-1);
+}
+
+.m3-new-document {
+    border-radius: var(--m3-shape-lg) !important;
+    background: var(--m3-primary-container) !important;
+    color: var(--m3-on-primary-container) !important;
+}
+
+.m3-history-item {
+    border-radius: var(--m3-shape-xl);
+    color: var(--m3-on-surface-var);
+}
+
+.m3-history-item:hover {
+    background: var(--m3-surface-3);
+}
+
+.m3-history-item.is-active {
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+}
+
+.m3-progress-step {
+    border-radius: var(--m3-shape-full);
+    color: var(--m3-on-surface-var);
+    white-space: nowrap;
+}
+
+.m3-progress-step.is-current {
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.m3-progress-step.is-done {
+    color: var(--m3-primary);
+}
+
+.m3-progress-icon {
+    border-radius: var(--m3-shape-full);
+    background: var(--m3-surface-3);
+}
+
+.m3-progress-step.is-current .m3-progress-icon {
+    background: var(--m3-primary);
+    color: var(--m3-on-primary);
+}
+
+.m3-progress-connector {
+    background: var(--m3-outline-var);
+}
+
+.m3-progress-connector.is-done {
+    background: var(--m3-primary);
+}
+
+.m3-stage-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
+}
+
+.m3-stage-icon {
+    border-radius: 20px;
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.m3-stage-label {
+    color: var(--m3-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.m3-idea-container {
+    border-radius: var(--m3-shape-xl);
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.m3-idea-container textarea {
+    background: var(--m3-surface) !important;
+}
+
+.m3-process-strip {
+    overflow: hidden;
+    border: 1px solid var(--m3-outline-var);
+    border-radius: var(--m3-shape-lg);
+    background: var(--m3-surface-1);
+}
+
+.m3-process-item + .m3-process-item {
+    border-left: 1px solid var(--m3-outline-var);
+}
+
+@media (max-width: 639px) {
+    .m3-stage-heading {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .m3-process-item + .m3-process-item {
+        border-top: 1px solid var(--m3-outline-var);
+        border-left: 0;
+    }
+
+    .m3-progress-step {
+        padding-inline: 8px;
+    }
+
+    .m3-progress-step span:last-child {
+        font-size: 0.6875rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .m3 *,
+    .m3 *::before,
+    .m3 *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+/* Interview uses one expressive question surface; transcript stays quiet. */
+.m3-interview-summary,
+.m3-interview-action,
+.m3-document-toolbar,
+.m3-revision-panel {
+    border: 1px solid var(--m3-outline-var);
+    border-radius: var(--m3-shape-lg);
+    background: var(--m3-surface-1);
+}
+
+.m3-linear-track {
+    border-radius: var(--m3-shape-full);
+    background: var(--m3-surface-3);
+}
+
+.m3-linear-indicator {
+    border-radius: var(--m3-shape-full);
+    background: var(--m3-primary);
+}
+
+.m3-chat-user {
+    border-radius: 20px 20px 4px 20px;
+    background: var(--m3-primary);
+    color: var(--m3-on-primary);
+}
+
+.m3-chat-assistant {
+    border-radius: 20px 20px 20px 4px;
+    background: var(--m3-surface-2);
+    color: var(--m3-on-surface);
+}
+
+.m3-interview-action {
+    box-shadow: var(--m3-shadow-2);
+}
+
+.m3-question-container {
+    border-radius: var(--m3-shape-xl);
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.m3-question-container textarea {
+    background: var(--m3-surface) !important;
+    color: var(--m3-on-surface);
+}
+
+.m3-filter-chip {
+    border-radius: var(--m3-shape-sm);
+    border-color: var(--m3-outline);
+    background: transparent;
+    color: var(--m3-on-primary-container);
+}
+
+.m3-filter-chip:hover {
+    background: color-mix(in oklab, var(--m3-primary) 8%, transparent);
+}
+
+.m3-filter-chip.is-selected {
+    border-color: transparent;
+    background: var(--m3-primary);
+    color: var(--m3-on-primary);
+}
+
+.m3-question-note {
+    border-radius: var(--m3-shape-sm);
+    background: color-mix(in oklab, var(--m3-surface) 72%, transparent);
+    color: var(--m3-on-surface-var);
+}
+
+/* Document paper is the focal plane; dividers replace repeated floating cards. */
+.m3-document-paper {
+    overflow: hidden;
+    border: 1px solid var(--m3-outline-var);
+    border-radius: var(--m3-shape-lg);
+    background: var(--m3-surface);
+    box-shadow: var(--m3-shadow-1);
+}
+
+.m3-document-section + .m3-document-section {
+    border-top: 1px solid var(--m3-outline-var);
+}
+
+.m3-section-index {
+    border-radius: var(--m3-shape-sm);
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+}
+
+.m3-design-action {
+    border-color: color-mix(in oklab, var(--m3-tertiary) 55%, var(--m3-outline)) !important;
+    background: var(--m3-tertiary-container) !important;
+    color: var(--m3-on-tertiary-container) !important;
+}
+
+@media (max-width: 639px) {
+    .m3-interview-action {
+        bottom: 8px;
+    }
+
+    .m3-document-section > div {
+        gap: 12px;
+    }
+}
