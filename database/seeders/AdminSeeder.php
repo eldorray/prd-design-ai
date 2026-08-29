@@ -6,12 +6,13 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
- * Local development admin account.
+ * Admin account, seeded with a fixed password so the same command works on
+ * every environment including production.
  *
- * Deliberately refuses to run in production: the password here is a known
- * value, and this application's admin panel hands out AI token quota against
- * the project's own provider keys. Provision production accounts with
- * `php artisan user:create`, which prompts for a password instead.
+ * The password is a known value, so change it from Settings > Security after
+ * the first login on any deployment that is reachable from the internet. This
+ * account carries admin rights and a large AI token quota billed to the
+ * project's own provider keys.
  */
 class AdminSeeder extends Seeder
 {
@@ -21,15 +22,6 @@ class AdminSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->isProduction()) {
-            $this->command?->error(
-                'AdminSeeder dilewati: password-nya nilai yang sudah diketahui umum. '
-                .'Untuk production pakai: php artisan user:create '.self::EMAIL.' --role=admin --quota=1000000'
-            );
-
-            return;
-        }
-
         $user = User::firstOrNew(['email' => self::EMAIL]);
 
         $user->name = $user->name ?: 'Fahmie';

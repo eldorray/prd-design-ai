@@ -136,7 +136,26 @@ generate. Sinkronisasi manual bisa lewat tombol "Muat model" di panel admin.
 ## 6. Membuat akun
 
 Registrasi publik ditutup — setiap akun membakar token provider AI, jadi akun
-dibuat manual. Akun pertama:
+dibuat manual.
+
+Cara tercepat untuk akun admin pertama, seeder:
+
+```bash
+php artisan db:seed --force
+```
+
+`--force` diperlukan karena Laravel meminta konfirmasi sebelum menjalankan
+seeder di production. Perintah ini membuat `fahmie@gmail.com` sebagai admin
+dengan kuota 1.000.000 token.
+
+**Passwordnya nilai yang sudah diketahui umum (`password`). Ganti lewat
+Settings → Security segera setelah login pertama**, selama situsnya bisa
+diakses dari internet. Akun ini memegang panel admin dan kuota AI yang
+ditagihkan ke API key Anda sendiri.
+
+Alternatifnya, buat akun dengan password pilihan sendiri sejak awal — perintah
+ini menanyakan password lewat prompt tersembunyi, jadi tidak tersimpan di
+riwayat shell:
 
 ```bash
 php artisan user:create owner@domain-anda.com --name="Nama Anda" --role=admin --quota=1000000
