@@ -50,7 +50,7 @@ Cara paling ringkas adalah mulai dari database MySQL kosong:
 php artisan migrate --force
 ```
 
-lalu buat ulang akun (bagian 5) dan daftarkan provider AI lewat
+lalu buat ulang akun (bagian 6) dan daftarkan provider AI lewat
 **Admin → Pengaturan AI**. Tidak ada langkah ekspor-impor yang perlu dijalankan.
 
 ## 3. Batas PHP dan web server
@@ -101,9 +101,12 @@ npm ci
 npm run build
 
 php artisan migrate --force
+php artisan ai:sync-models          # isi daftar model provider
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+
+php artisan deploy:check            # harus lolos sebelum situs dibuka
 ```
 
 Setelah `npm run build`, pastikan file penanda dev server tidak ikut terbawa:
@@ -115,7 +118,22 @@ rm -f public/hot public/fonts-manifest.dev.json
 `public/hot` membuat Laravel menarik seluruh asset dari Vite dev server yang
 tidak berjalan di production. Akibatnya halaman tampil kosong total.
 
-## 5. Membuat akun
+## 5. Cron (wajib)
+
+Daftar model tiap provider disimpan di database dan disegarkan oleh scheduler,
+bukan diambil saat request. Tanpa cron, daftar itu tidak pernah diperbarui:
+model baru tidak muncul, model yang dihapus provider tetap ditawarkan.
+
+```cron
+* * * * * cd /path/ke/aplikasi && php artisan schedule:run >> /dev/null 2>&1
+```
+
+`ai:sync-models` berjalan tiap jam dari sana. Kalau satu provider sedang down,
+sinkronisasinya dilewati dan daftar model yang tersimpan tetap dipakai — jadi
+gangguan provider tidak menjatuhkan penyimpanan PRD, penyimpanan desain, atau
+generate. Sinkronisasi manual bisa lewat tombol "Muat model" di panel admin.
+
+## 6. Membuat akun
 
 Registrasi publik ditutup — setiap akun membakar token provider AI, jadi akun
 dibuat manual. Akun pertama:
@@ -139,7 +157,7 @@ Mempromosikan akun yang sudah ada:
 php artisan user:promote-admin staf@domain-anda.com
 ```
 
-## 6. Email
+## 7. Email
 
 `MAIL_MAILER=log` berarti tidak ada email yang benar-benar terkirim. Konsekuensi
 selama SMTP belum dipasang:
@@ -161,7 +179,7 @@ Setelah SMTP tersedia, isi blok `MAIL_*` di `.env`, lalu aktifkan kembali
 `Features::emailVerification()` di `config/fortify.php` dan tambahkan
 `implements MustVerifyEmail` pada `App\Models\User`.
 
-## 7. Setelah deploy
+## 8. Setelah deploy
 
 Periksa cepat:
 

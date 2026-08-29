@@ -179,6 +179,24 @@ class DeployCheck extends Command
             'Provider AI',
             'aktif tanpa API key: '.$keyless->pluck('name')->join(', '),
         );
+
+        // Without a synced list every model fails Rule::in and nothing can be
+        // saved or generated, so this is a hard failure rather than a warning.
+        $unsynced = $active->filter(fn (AiProvider $provider): bool => blank($provider->models));
+
+        $this->assert(
+            $unsynced->isEmpty(),
+            'Daftar model',
+            'belum tersinkron untuk: '.$unsynced->pluck('name')->join(', ').' — jalankan php artisan ai:sync-models',
+        );
+
+        $stale = $active->filter(
+            fn (AiProvider $provider): bool => $provider->models_synced_at?->lt(now()->subDay()) ?? false,
+        );
+
+        if ($stale->isNotEmpty()) {
+            $this->warn_('Daftar model', 'lebih dari 24 jam tidak tersinkron ('.$stale->pluck('name')->join(', ').'); pastikan cron schedule:run berjalan');
+        }
     }
 
     private function checkMail(): void

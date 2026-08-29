@@ -42,14 +42,21 @@ class AiProvider
     ];
 
     /**
-     * Map of model => provider slug derived from the DB providers.
+     * Map of model => provider slug, memoised for the current request.
      *
      * @var array<string, string>|null
      */
     protected static ?array $modelMap = null;
 
     /**
-     * The list of selectable model identifiers (DB-driven, cached).
+     * How long the resolved map is cached. This only saves a database query —
+     * the models themselves are persisted by the sync command, so a cold cache
+     * costs one SELECT rather than a round trip to every provider.
+     */
+    private const MAP_CACHE_SECONDS = 300;
+
+    /**
+     * The list of selectable model identifiers.
      *
      * @return list<string>
      */
@@ -76,6 +83,38 @@ class AiProvider
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Refresh one provider's stored model list from its /models endpoint.
+     *
+     * This is the ONLY place that talks to a provider outside a generation.
+     * It is called from the console command and from the admin settings
+     * screen, never from a request that a visitor is waiting on.
+     *
+     * A failure throws and leaves the stored list untouched, so the previous
+     * known-good models keep serving.
+     *
+     * @return list<string> The models now stored for the provider.
+     *
+     * @throws \RuntimeException When the provider has no key or returns nothing.
+     */
+    public static function syncProvider(AiProviderModel $provider): array
+    {
+        if (blank($provider->api_key)) {
+            throw new \RuntimeException('API key belum diisi untuk provider ini.');
+        }
+
+        $models = self::fetchModels($provider->base_url, $provider->api_key);
+
+        $provider->forceFill([
+            'models' => $models,
+            'models_synced_at' => now(),
+        ])->save();
+
+        self::flushCache();
+
+        return $models;
     }
 
     /**
@@ -192,7 +231,12 @@ class AiProvider
     }
 
     /**
-     * Model => provider slug map, DB-driven with static fallback.
+     * Model => provider slug map, read from what the sync command stored.
+     *
+     * Never performs HTTP. This runs inside every authenticated page render
+     * (via the Inertia middleware) and inside the validation rules of every
+     * save, so a provider being slow or unreachable must not be able to reach
+     * this path at all.
      *
      * @return array<string, string>
      */
@@ -204,11 +248,13 @@ class AiProvider
 
         return self::$modelMap = Cache::remember(
             'ai_providers.model_map',
-            now()->addMinutes(10),
+            now()->addSeconds(self::MAP_CACHE_SECONDS),
             function (): array {
                 $providers = self::dbProviders();
 
                 if ($providers === []) {
+                    // Fresh install with no provider rows yet: fall back to the
+                    // static list so the workspaces are not empty out of the box.
                     $map = [];
 
                     foreach (self::FALLBACK_MODELS as $slug => $models) {
@@ -223,40 +269,12 @@ class AiProvider
                 $map = [];
 
                 foreach ($providers as $slug => $provider) {
-                    $models = self::fetchProviderModels($slug, $provider);
-
-                    foreach ($models as $model) {
+                    foreach ($provider['models'] as $model) {
                         $map[$model] = $slug;
                     }
                 }
 
                 return $map;
-            },
-        );
-    }
-
-    /**
-     * Resolve a provider's models — cached per provider slug.
-     *
-     * @param  array{id: string, name: string, base_url: string, api_key: ?string, supports_thinking: bool}  $provider
-     * @return list<string>
-     */
-    protected static function fetchProviderModels(string $slug, array $provider): array
-    {
-        return Cache::remember(
-            'ai_providers.models.'.$slug,
-            now()->addMinutes(10),
-            function () use ($provider): array {
-                if ($provider['api_key'] === null) {
-                    return [];
-                }
-
-                try {
-                    return self::fetchModels($provider['base_url'], $provider['api_key']);
-                } catch (Throwable) {
-                    // Provider unreachable — no models from it this cycle.
-                    return [];
-                }
             },
         );
     }
@@ -361,15 +379,11 @@ class AiProvider
     }
 
     /**
-     * Flush the resolved model map + per-provider caches (call after admin edits).
+     * Flush the resolved model map (call after admin edits or a sync).
      */
     public static function flushCache(): void
     {
         self::$modelMap = null;
         Cache::forget('ai_providers.model_map');
-
-        foreach (array_keys(self::dbProviders()) as $slug) {
-            Cache::forget('ai_providers.models.'.$slug);
-        }
     }
 }

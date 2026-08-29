@@ -34,6 +34,8 @@ type ProviderRow = {
     has_key: boolean;
     is_active: boolean;
     supports_thinking: boolean;
+    model_count: number;
+    models_synced_at: string | null;
 };
 
 type PromptRow = {
@@ -269,6 +271,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 {provider.has_key
                                                     ? 'tersimpan'
                                                     : 'belum diset'}
+                                                {' · '}
+                                                {provider.models_synced_at
+                                                    ? `${provider.model_count} model, disinkron ${new Date(provider.models_synced_at).toLocaleString('id-ID')}`
+                                                    : 'model belum disinkron'}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">

@@ -32,6 +32,8 @@ class AiSettingController extends Controller
                 'has_key' => filled($provider->api_key),
                 'is_active' => $provider->is_active,
                 'supports_thinking' => $provider->supports_thinking,
+                'model_count' => count($provider->models ?? []),
+                'models_synced_at' => $provider->models_synced_at?->toIso8601String(),
             ]);
 
         $prompts = AiPrompt::query()
@@ -65,7 +67,7 @@ class AiSettingController extends Controller
             'supports_thinking' => ['boolean'],
         ]);
 
-        AiProviderModel::create([
+        $provider = AiProviderModel::create([
             'name' => $validated['name'],
             'slug' => $validated['slug'],
             'base_url' => $validated['base_url'],
@@ -75,6 +77,7 @@ class AiSettingController extends Controller
         ]);
 
         AiProvider::flushCache();
+        $this->syncQuietly($provider);
 
         return to_route('admin.ai.index');
     }
@@ -104,7 +107,38 @@ class AiSettingController extends Controller
         $provider->save();
         AiProvider::flushCache();
 
+        if ($provider->wasChanged(['base_url', 'api_key', 'is_active'])) {
+            $this->syncQuietly($provider);
+        }
+
         return to_route('admin.ai.index');
+    }
+
+    /**
+     * Pull the model list after an edit so a new provider is usable straight
+     * away, without letting a failure block saving the settings themselves.
+     */
+    private function syncQuietly(AiProviderModel $provider): void
+    {
+        if (! $provider->is_active || blank($provider->api_key)) {
+            return;
+        }
+
+        try {
+            $models = AiProvider::syncProvider($provider);
+
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => count($models).' model dimuat dari '.$provider->name.'.',
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => 'Provider tersimpan, tapi daftar model gagal dimuat. Coba tombol "Muat model".',
+            ]);
+        }
     }
 
     /**
@@ -119,9 +153,11 @@ class AiSettingController extends Controller
     }
 
     /**
-     * Fetch models live from the provider's /models endpoint and return them
-     * for the settings UI (not persisted — the generation path resolves
-     * models the same way).
+     * Sync this provider's model list on demand.
+     *
+     * The scheduled `ai:sync-models` command does the same thing hourly; this
+     * is the manual trigger so an administrator does not have to wait after
+     * adding a key. A failure leaves the stored list untouched.
      */
     public function models(AiProviderModel $provider): JsonResponse
     {
@@ -132,8 +168,8 @@ class AiSettingController extends Controller
         }
 
         try {
-            $models = AiProvider::fetchModels($provider->base_url, $provider->api_key);
-        } catch (ConnectionException $exception) {
+            $models = AiProvider::syncProvider($provider);
+        } catch (ConnectionException) {
             return response()->json([
                 'message' => 'Tidak bisa menghubungi provider. Periksa Base URL.',
             ], 502);
@@ -149,6 +185,7 @@ class AiSettingController extends Controller
 
         return response()->json([
             'models' => $models,
+            'synced_at' => $provider->models_synced_at?->toIso8601String(),
         ]);
     }
 

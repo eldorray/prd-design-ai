@@ -51,22 +51,20 @@ test('admins can create a provider with an encrypted key', function () {
         ->and($provider->getRawOriginal('api_key'))->not->toContain('sk-or-secret');
 });
 
-test('workspace model endpoint returns provider-labelled options from the configured base url', function () {
+test('workspace model endpoint serves the synced list without calling the provider', function () {
     AiProvider::factory()->create([
         'name' => 'Custom Gateway',
         'slug' => 'custom-gateway',
         'base_url' => 'https://gateway.example.com/v1',
         'api_key' => 'test-key',
+        'models' => ['model-one', 'model-two'],
+        'models_synced_at' => now(),
     ]);
 
-    Http::fake([
-        'https://gateway.example.com/v1/models' => Http::response([
-            'data' => [
-                ['id' => 'model-one'],
-                ['id' => 'model-two'],
-            ],
-        ]),
-    ]);
+    // The endpoint runs on every workspace load. It must never reach out to a
+    // provider from there: a slow one would stall the page, and a failing one
+    // used to empty the list that request validation depends on.
+    Http::preventStrayRequests();
 
     App\Support\AiProvider::flushCache();
     $user = User::factory()->create();
@@ -80,7 +78,7 @@ test('workspace model endpoint returns provider-labelled options from the config
         ->assertJsonPath('models.1.id', 'model-two');
 });
 
-test('models are loaded dynamically from the provider base url', function () {
+test('the admin model button syncs and stores the provider list', function () {
     config(['services.deepseek.key' => null]);
 
     $provider = AiProvider::factory()->create([
@@ -105,6 +103,11 @@ test('models are loaded dynamically from the provider base url', function () {
         ->assertOk()
         ->assertJsonPath('models.0', 'model-a')
         ->assertJsonPath('models.1', 'model-b');
+
+    $provider->refresh();
+
+    expect($provider->models)->toBe(['model-a', 'model-b'])
+        ->and($provider->models_synced_at)->not->toBeNull();
 });
 
 test('loading models without a key returns 422', function () {

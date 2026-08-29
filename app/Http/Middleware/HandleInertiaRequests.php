@@ -43,8 +43,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            // Model list is only needed inside the workspaces; skip resolution
-            // (and any provider HTTP calls on a cold cache) for guests.
+            // Resolved from what `ai:sync-models` stored, so this is a cached
+            // database read and never a call out to a provider. Still skipped
+            // for guests, who have no workspace to populate.
             ...$request->user() ? ['aiModels' => AiProvider::models()] : [],
         ];
     }
