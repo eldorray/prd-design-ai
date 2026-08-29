@@ -6,7 +6,13 @@ import { toast } from 'sonner';
 import AiSettingController from '@/actions/App/Http/Controllers/Admin/AiSettingController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -56,8 +62,12 @@ export default function AiSettings({ providers, prompts }: Props) {
     const [savingProvider, setSavingProvider] = useState(false);
 
     // --- Model loader ---
-    const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(null);
-    const [loadedModels, setLoadedModels] = useState<Record<string, string[]>>({});
+    const [loadingModelsFor, setLoadingModelsFor] = useState<string | null>(
+        null,
+    );
+    const [loadedModels, setLoadedModels] = useState<Record<string, string[]>>(
+        {},
+    );
 
     // --- Prompt form ---
     const [showPromptDialog, setShowPromptDialog] = useState(false);
@@ -69,8 +79,11 @@ export default function AiSettings({ providers, prompts }: Props) {
     const [savingPrompt, setSavingPrompt] = useState(false);
 
     // --- Delete confirmation ---
-    const [deletingProvider, setDeletingProvider] = useState<ProviderRow | null>(null);
-    const [deletingPrompt, setDeletingPrompt] = useState<PromptRow | null>(null);
+    const [deletingProvider, setDeletingProvider] =
+        useState<ProviderRow | null>(null);
+    const [deletingPrompt, setDeletingPrompt] = useState<PromptRow | null>(
+        null,
+    );
 
     const saveProvider = async () => {
         setSavingProvider(true);
@@ -80,13 +93,22 @@ export default function AiSettings({ providers, prompts }: Props) {
                 preserveScroll: true,
             });
             setShowProviderDialog(false);
-            setForm({ name: '', slug: '', base_url: '', api_key: '', supports_thinking: false });
+            setForm({
+                name: '',
+                slug: '',
+                base_url: '',
+                api_key: '',
+                supports_thinking: false,
+            });
         } finally {
             setSavingProvider(false);
         }
     };
 
-    const toggleProviderActive = (provider: ProviderRow, is_active: boolean) => {
+    const toggleProviderActive = (
+        provider: ProviderRow,
+        is_active: boolean,
+    ) => {
         router.put(
             AiSettingController.updateProvider.url(provider.id),
             {
@@ -126,7 +148,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                 ...current,
                 [provider.id]: data.models ?? [],
             }));
-            toast.success(`${data.models?.length ?? 0} model dimuat dari ${provider.name}.`);
+            toast.success(
+                `${data.models?.length ?? 0} model dimuat dari ${provider.name}.`,
+            );
         } catch {
             toast.error('Tidak bisa terhubung ke server.');
         } finally {
@@ -138,9 +162,13 @@ export default function AiSettings({ providers, prompts }: Props) {
         setSavingPrompt(true);
 
         try {
-            await router.post(AiSettingController.storePrompt.url(), promptForm, {
-                preserveScroll: true,
-            });
+            await router.post(
+                AiSettingController.storePrompt.url(),
+                promptForm,
+                {
+                    preserveScroll: true,
+                },
+            );
             setShowPromptDialog(false);
             setPromptForm({ scope: 'prd', label: '', content: '' });
         } finally {
@@ -169,8 +197,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-lg font-semibold">Pengaturan AI</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Kelola provider model, kunci API, dan injeksi prompt.
+                        <p className="text-muted-foreground text-sm">
+                            Kelola provider model, kunci API, dan injeksi
+                            prompt.
                         </p>
                     </div>
                 </div>
@@ -180,29 +209,34 @@ export default function AiSettings({ providers, prompts }: Props) {
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <div>
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <Plug className="size-4 text-primary" />
+                                <Plug className="text-primary size-4" />
                                 Provider
                             </CardTitle>
                             <CardDescription>
                                 Base URL dan API key per provider. Model dimuat
-                                langsung dari <code>{`{base_url}/models`}</code>.
+                                langsung dari <code>{`{base_url}/models`}</code>
+                                .
                             </CardDescription>
                         </div>
-                        <Button size="sm" onClick={() => setShowProviderDialog(true)}>
+                        <Button
+                            size="sm"
+                            onClick={() => setShowProviderDialog(true)}
+                        >
                             Tambah provider
                         </Button>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {providers.length === 0 ? (
-                            <p className="py-6 text-center text-sm text-muted-foreground">
+                            <p className="text-muted-foreground py-6 text-center text-sm">
                                 Belum ada provider. Aplikasi memakai konfigurasi
-                                default dari .env (deepseek, gemini, tokenrouter).
+                                default dari .env (deepseek, gemini,
+                                tokenrouter).
                             </p>
                         ) : (
                             providers.map((provider) => (
                                 <div
                                     key={provider.id}
-                                    className="rounded-lg border border-border p-4"
+                                    className="border-border rounded-lg border p-4"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="min-w-0">
@@ -210,33 +244,56 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 <p className="font-medium">
                                                     {provider.name}
                                                 </p>
-                                                <Badge variant={provider.is_active ? 'default' : 'secondary'}>
-                                                    {provider.is_active ? 'Aktif' : 'Nonaktif'}
+                                                <Badge
+                                                    variant={
+                                                        provider.is_active
+                                                            ? 'default'
+                                                            : 'secondary'
+                                                    }
+                                                >
+                                                    {provider.is_active
+                                                        ? 'Aktif'
+                                                        : 'Nonaktif'}
                                                 </Badge>
                                                 {provider.supports_thinking ? (
-                                                    <Badge variant="outline">thinking</Badge>
+                                                    <Badge variant="outline">
+                                                        thinking
+                                                    </Badge>
                                                 ) : null}
                                             </div>
-                                            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                                            <p className="text-muted-foreground mt-1 truncate font-mono text-xs">
                                                 {provider.base_url}
                                             </p>
-                                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                                Key: {provider.has_key ? 'tersimpan' : 'belum diset'}
+                                            <p className="text-muted-foreground mt-0.5 text-xs">
+                                                Key:{' '}
+                                                {provider.has_key
+                                                    ? 'tersimpan'
+                                                    : 'belum diset'}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Switch
                                                 checked={provider.is_active}
-                                                onCheckedChange={(value: boolean) =>
-                                                    toggleProviderActive(provider, value)
+                                                onCheckedChange={(
+                                                    value: boolean,
+                                                ) =>
+                                                    toggleProviderActive(
+                                                        provider,
+                                                        value,
+                                                    )
                                                 }
                                                 aria-label={`Aktifkan ${provider.name}`}
                                             />
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                disabled={loadingModelsFor === provider.id}
-                                                onClick={() => loadModels(provider)}
+                                                disabled={
+                                                    loadingModelsFor ===
+                                                    provider.id
+                                                }
+                                                onClick={() =>
+                                                    loadModels(provider)
+                                                }
                                             >
                                                 <RefreshCw
                                                     className={`size-4 ${loadingModelsFor === provider.id ? 'animate-spin' : ''}`}
@@ -247,7 +304,11 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 size="sm"
                                                 variant="ghost"
                                                 className="text-destructive"
-                                                onClick={() => setDeletingProvider(provider)}
+                                                onClick={() =>
+                                                    setDeletingProvider(
+                                                        provider,
+                                                    )
+                                                }
                                                 aria-label={`Hapus ${provider.name}`}
                                             >
                                                 <Trash2 className="size-4" />
@@ -257,11 +318,17 @@ export default function AiSettings({ providers, prompts }: Props) {
 
                                     {loadedModels[provider.id] ? (
                                         <div className="mt-3 flex flex-wrap gap-1.5">
-                                            {loadedModels[provider.id].map((model) => (
-                                                <Badge key={model} variant="secondary" className="font-mono text-xs">
-                                                    {model}
-                                                </Badge>
-                                            ))}
+                                            {loadedModels[provider.id].map(
+                                                (model) => (
+                                                    <Badge
+                                                        key={model}
+                                                        variant="secondary"
+                                                        className="font-mono text-xs"
+                                                    >
+                                                        {model}
+                                                    </Badge>
+                                                ),
+                                            )}
                                         </div>
                                     ) : null}
                                 </div>
@@ -275,52 +342,63 @@ export default function AiSettings({ providers, prompts }: Props) {
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <div>
                             <CardTitle className="flex items-center gap-2 text-base">
-                                <Sparkles className="size-4 text-primary" />
+                                <Sparkles className="text-primary size-4" />
                                 Injeksi Prompt
                             </CardTitle>
                             <CardDescription>
-                                Instruksi tambahan yang disisipkan ke system prompt
-                                setiap generate PRD atau design.
+                                Instruksi tambahan yang disisipkan ke system
+                                prompt setiap generate PRD atau design.
                             </CardDescription>
                         </div>
-                        <Button size="sm" onClick={() => setShowPromptDialog(true)}>
+                        <Button
+                            size="sm"
+                            onClick={() => setShowPromptDialog(true)}
+                        >
                             Tambah injeksi
                         </Button>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {prompts.length === 0 ? (
-                            <p className="py-6 text-center text-sm text-muted-foreground">
+                            <p className="text-muted-foreground py-6 text-center text-sm">
                                 Belum ada injeksi prompt.
                             </p>
                         ) : (
                             prompts.map((prompt) => (
                                 <div
                                     key={prompt.id}
-                                    className="rounded-lg border border-border p-4"
+                                    className="border-border rounded-lg border p-4"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <Badge variant="outline">
-                                                    {prompt.scope === 'prd' ? 'PRD' : 'Design'}
+                                                    {prompt.scope === 'prd'
+                                                        ? 'PRD'
+                                                        : 'Design'}
                                                 </Badge>
-                                                <p className="font-medium">{prompt.label}</p>
+                                                <p className="font-medium">
+                                                    {prompt.label}
+                                                </p>
                                             </div>
-                                            <pre className="mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap rounded bg-muted/40 p-2 font-mono text-xs text-muted-foreground">
+                                            <pre className="bg-muted/40 text-muted-foreground mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap rounded p-2 font-mono text-xs">
                                                 {prompt.content}
                                             </pre>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Switch
                                                 checked={prompt.is_active}
-                                                onCheckedChange={() => togglePromptActive(prompt)}
+                                                onCheckedChange={() =>
+                                                    togglePromptActive(prompt)
+                                                }
                                                 aria-label={`Aktifkan ${prompt.label}`}
                                             />
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
                                                 className="text-destructive"
-                                                onClick={() => setDeletingPrompt(prompt)}
+                                                onClick={() =>
+                                                    setDeletingPrompt(prompt)
+                                                }
                                                 aria-label={`Hapus ${prompt.label}`}
                                             >
                                                 <Trash2 className="size-4" />
@@ -335,7 +413,10 @@ export default function AiSettings({ providers, prompts }: Props) {
             </div>
 
             {/* Add provider dialog */}
-            <Dialog open={showProviderDialog} onOpenChange={setShowProviderDialog}>
+            <Dialog
+                open={showProviderDialog}
+                onOpenChange={setShowProviderDialog}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Tambah provider</DialogTitle>
@@ -355,7 +436,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                             <Input
                                 id="provider-name"
                                 value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({ ...form, name: e.target.value })
+                                }
                                 placeholder="DeepSeek"
                             />
                         </div>
@@ -364,7 +447,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                             <Input
                                 id="provider-slug"
                                 value={form.slug}
-                                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({ ...form, slug: e.target.value })
+                                }
                                 placeholder="deepseek"
                             />
                         </div>
@@ -373,7 +458,12 @@ export default function AiSettings({ providers, prompts }: Props) {
                             <Input
                                 id="provider-url"
                                 value={form.base_url}
-                                onChange={(e) => setForm({ ...form, base_url: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        base_url: e.target.value,
+                                    })
+                                }
                                 placeholder="https://api.deepseek.com"
                             />
                         </div>
@@ -383,7 +473,12 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 id="provider-key"
                                 type="password"
                                 value={form.api_key}
-                                onChange={(e) => setForm({ ...form, api_key: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        api_key: e.target.value,
+                                    })
+                                }
                                 placeholder="sk-..."
                             />
                         </div>
@@ -392,7 +487,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 id="provider-thinking"
                                 checked={form.supports_thinking}
                                 onCheckedChange={(value: boolean) =>
-                                    setForm({ ...form, supports_thinking: value })
+                                    setForm({
+                                        ...form,
+                                        supports_thinking: value,
+                                    })
                                 }
                             />
                             <Label htmlFor="provider-thinking">
@@ -410,7 +508,12 @@ export default function AiSettings({ providers, prompts }: Props) {
                         </Button>
                         <Button
                             onClick={saveProvider}
-                            disabled={savingProvider || !form.name || !form.slug || !form.base_url}
+                            disabled={
+                                savingProvider ||
+                                !form.name ||
+                                !form.slug ||
+                                !form.base_url
+                            }
                         >
                             Simpan
                         </Button>
@@ -435,9 +538,12 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 id="prompt-scope"
                                 value={promptForm.scope}
                                 onChange={(e) =>
-                                    setPromptForm({ ...promptForm, scope: e.target.value })
+                                    setPromptForm({
+                                        ...promptForm,
+                                        scope: e.target.value,
+                                    })
                                 }
-                                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                                className="border-input bg-background mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                             >
                                 <option value="prd">PRD Generator</option>
                                 <option value="design">Design Studio</option>
@@ -449,7 +555,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 id="prompt-label"
                                 value={promptForm.label}
                                 onChange={(e) =>
-                                    setPromptForm({ ...promptForm, label: e.target.value })
+                                    setPromptForm({
+                                        ...promptForm,
+                                        label: e.target.value,
+                                    })
                                 }
                                 placeholder="Selalu pakai bahasa Indonesia formal"
                             />
@@ -460,7 +569,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 id="prompt-content"
                                 value={promptForm.content}
                                 onChange={(e) =>
-                                    setPromptForm({ ...promptForm, content: e.target.value })
+                                    setPromptForm({
+                                        ...promptForm,
+                                        content: e.target.value,
+                                    })
                                 }
                                 placeholder="Tulis instruksi tambahan di sini..."
                                 className="min-h-28"
@@ -477,7 +589,11 @@ export default function AiSettings({ providers, prompts }: Props) {
                         </Button>
                         <Button
                             onClick={savePrompt}
-                            disabled={savingPrompt || !promptForm.label || !promptForm.content}
+                            disabled={
+                                savingPrompt ||
+                                !promptForm.label ||
+                                !promptForm.content
+                            }
                         >
                             Simpan
                         </Button>
@@ -486,17 +602,23 @@ export default function AiSettings({ providers, prompts }: Props) {
             </Dialog>
 
             {/* Delete confirmations */}
-            <Dialog open={deletingProvider !== null} onOpenChange={(open) => !open && setDeletingProvider(null)}>
+            <Dialog
+                open={deletingProvider !== null}
+                onOpenChange={(open) => !open && setDeletingProvider(null)}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Hapus provider?</DialogTitle>
                         <DialogDescription>
-                            {deletingProvider?.name} akan dihapus dari daftar. Model
-                            dari provider ini tidak akan tersedia lagi.
+                            {deletingProvider?.name} akan dihapus dari daftar.
+                            Model dari provider ini tidak akan tersedia lagi.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeletingProvider(null)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeletingProvider(null)}
+                        >
                             Batal
                         </Button>
                         <Button
@@ -504,7 +626,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                             onClick={() => {
                                 if (deletingProvider) {
                                     router.delete(
-                                        AiSettingController.destroyProvider.url(deletingProvider.id),
+                                        AiSettingController.destroyProvider.url(
+                                            deletingProvider.id,
+                                        ),
                                         { preserveScroll: true },
                                     );
                                     setDeletingProvider(null);
@@ -517,17 +641,23 @@ export default function AiSettings({ providers, prompts }: Props) {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={deletingPrompt !== null} onOpenChange={(open) => !open && setDeletingPrompt(null)}>
+            <Dialog
+                open={deletingPrompt !== null}
+                onOpenChange={(open) => !open && setDeletingPrompt(null)}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Hapus injeksi prompt?</DialogTitle>
                         <DialogDescription>
-                            "{deletingPrompt?.label}" akan berhenti disisipkan ke
-                            permintaan generate.
+                            "{deletingPrompt?.label}" akan berhenti disisipkan
+                            ke permintaan generate.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeletingPrompt(null)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeletingPrompt(null)}
+                        >
                             Batal
                         </Button>
                         <Button
@@ -535,7 +665,9 @@ export default function AiSettings({ providers, prompts }: Props) {
                             onClick={() => {
                                 if (deletingPrompt) {
                                     router.delete(
-                                        AiSettingController.destroyPrompt.url(deletingPrompt.id),
+                                        AiSettingController.destroyPrompt.url(
+                                            deletingPrompt.id,
+                                        ),
                                         { preserveScroll: true },
                                     );
                                     setDeletingPrompt(null);

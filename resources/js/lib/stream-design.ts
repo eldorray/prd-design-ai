@@ -100,7 +100,9 @@ export async function streamDesign(
                 eventName = normalized.slice(6).trim();
             } else if (normalized.startsWith('data:')) {
                 // Per the SSE spec, multiple data lines join with '\n'.
-                dataText += (dataText ? '\n' : '') + normalized.slice(5).replace(/^ /, '');
+                dataText +=
+                    (dataText ? '\n' : '') +
+                    normalized.slice(5).replace(/^ /, '');
             }
         }
 
@@ -142,12 +144,12 @@ export async function streamDesign(
         const crlf = buf.indexOf('\r\n\r\n');
 
         if (lf === -1) {
-return crlf;
-}
+            return crlf;
+        }
 
         if (crlf === -1) {
-return lf;
-}
+            return lf;
+        }
 
         return Math.min(lf, crlf);
     };
@@ -165,7 +167,9 @@ return lf;
 
         while (separator !== -1) {
             const rawEvent = buffer.slice(0, separator);
-            buffer = buffer.slice(separator + separatorLength(buffer, separator));
+            buffer = buffer.slice(
+                separator + separatorLength(buffer, separator),
+            );
             handleEvent(rawEvent);
             separator = nextSeparator(buffer);
         }

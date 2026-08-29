@@ -16,14 +16,14 @@ export function PortfolioSidebar() {
         <aside className="flex w-full shrink-0 flex-col gap-10 md:w-56">
             {/* User Avatar & Name */}
             <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
+                <div className="bg-secondary text-foreground flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold">
                     {getInitials(auth.user?.name ?? 'U')}
                 </div>
                 <div>
-                    <h1 className="text-lg font-bold tracking-tight text-foreground">
+                    <h1 className="text-foreground text-lg font-bold tracking-tight">
                         {auth.user?.name ?? 'User'}
                     </h1>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-muted-foreground text-[11px]">
                         {auth.user?.email ?? ''}
                     </p>
                 </div>
@@ -31,13 +31,13 @@ export function PortfolioSidebar() {
 
             {/* Navigasi: MENU */}
             <div className="space-y-4">
-                <span className="block text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+                <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-[0.2em]">
                     Menu
                 </span>
                 <nav className="flex flex-col gap-2.5 text-sm">
                     <Link
                         href="/dashboard"
-                        className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground group flex items-center gap-3 transition-colors"
                     >
                         <svg
                             className="h-4 w-4"
@@ -56,7 +56,7 @@ export function PortfolioSidebar() {
                     </Link>
                     <Link
                         href="/dashboard"
-                        className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground group flex items-center gap-3 transition-colors"
                     >
                         <svg
                             className="h-4 w-4"
@@ -77,14 +77,14 @@ export function PortfolioSidebar() {
             </div>
 
             {/* Navigasi: AKUN */}
-            <div className="mt-auto space-y-4 border-t border-border pt-6">
-                <span className="block text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+            <div className="border-border mt-auto space-y-4 border-t pt-6">
+                <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-[0.2em]">
                     Akun
                 </span>
                 <nav className="flex flex-col gap-2.5 text-sm">
                     <Link
                         href={edit()}
-                        className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground group flex items-center gap-3 transition-colors"
                     >
                         <svg
                             className="h-4 w-4"
@@ -109,7 +109,7 @@ export function PortfolioSidebar() {
                     </Link>
                     <Link
                         href={editSecurity()}
-                        className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground group flex items-center gap-3 transition-colors"
                     >
                         <svg
                             className="h-4 w-4"
@@ -130,7 +130,7 @@ export function PortfolioSidebar() {
                         href="/logout"
                         method="post"
                         as="button"
-                        className="group flex items-center gap-3 text-muted-foreground transition-colors hover:text-destructive-foreground"
+                        className="text-muted-foreground hover:text-destructive-foreground group flex items-center gap-3 transition-colors"
                     >
                         <svg
                             className="h-4 w-4"

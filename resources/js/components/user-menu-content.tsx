@@ -1,5 +1,11 @@
 import { Link, router } from '@inertiajs/react';
-import { FileText, LayoutTemplate, LogOut, Settings, Shield } from 'lucide-react';
+import {
+    FileText,
+    LayoutTemplate,
+    LogOut,
+    Settings,
+    Shield,
+} from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,

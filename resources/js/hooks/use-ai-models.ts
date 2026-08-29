@@ -45,7 +45,9 @@ export function useAiModels(initialModelIds: string[] = []) {
                 const data = (await response.json()) as AiModelResponse;
 
                 if (!response.ok) {
-                    throw new Error(data.message ?? 'Daftar model gagal dimuat.');
+                    throw new Error(
+                        data.message ?? 'Daftar model gagal dimuat.',
+                    );
                 }
 
                 const resolved = Array.isArray(data.models) ? data.models : [];
@@ -57,7 +59,10 @@ export function useAiModels(initialModelIds: string[] = []) {
                     );
                 }
             } catch (caught) {
-                if (caught instanceof DOMException && caught.name === 'AbortError') {
+                if (
+                    caught instanceof DOMException &&
+                    caught.name === 'AbortError'
+                ) {
                     return;
                 }
 

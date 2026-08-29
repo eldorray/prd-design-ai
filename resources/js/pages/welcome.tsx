@@ -77,13 +77,13 @@ export default function Welcome() {
         <>
             <Head title="Home" />
 
-            <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
+            <div className="bg-background text-foreground relative min-h-screen overflow-hidden">
                 <Aurora />
 
-                <header className="sticky top-0 z-30 border-b border-border/60 bg-background/60 backdrop-blur-xl">
+                <header className="border-border/60 bg-background/60 sticky top-0 z-30 border-b backdrop-blur-xl">
                     <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3 md:px-8">
                         <div className="flex items-center gap-2.5">
-                            <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                            <div className="bg-primary text-primary-foreground shadow-primary/20 flex size-9 items-center justify-center rounded-xl shadow-lg">
                                 <Sparkles className="size-4" />
                             </div>
                             <span className="font-semibold tracking-tight">
@@ -102,7 +102,7 @@ export default function Welcome() {
                             ) : (
                                 <Button
                                     asChild
-                                    className="rounded-full shadow-lg shadow-primary/20"
+                                    className="shadow-primary/20 rounded-full shadow-lg"
                                 >
                                     <Link href={login()}>
                                         Masuk
@@ -119,19 +119,19 @@ export default function Welcome() {
                     <section className="relative">
                         <div
                             aria-hidden
-                            className="pointer-events-none absolute inset-0 -z-10 bg-grid"
+                            className="bg-grid pointer-events-none absolute inset-0 -z-10"
                         />
-                        <div className="mx-auto w-full max-w-6xl px-5 pt-16 pb-12 text-center md:px-8 md:pt-24 md:pb-16">
-                            <div className="mx-auto inline-flex animate-rise items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 text-sm text-muted-foreground backdrop-blur-md">
+                        <div className="mx-auto w-full max-w-6xl px-5 pb-12 pt-16 text-center md:px-8 md:pb-16 md:pt-24">
+                            <div className="animate-rise border-border/70 bg-card/60 text-muted-foreground mx-auto inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm backdrop-blur-md">
                                 <span className="relative flex size-2">
-                                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
-                                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                                    <span className="bg-primary/60 absolute inline-flex size-full animate-ping rounded-full" />
+                                    <span className="bg-primary relative inline-flex size-2 rounded-full" />
                                 </span>
                                 AI PRD & Design Studio · Bahasa Indonesia
                             </div>
 
                             <h1
-                                className="mx-auto mt-7 max-w-4xl animate-rise text-5xl font-semibold tracking-tight md:text-7xl"
+                                className="animate-rise mx-auto mt-7 max-w-4xl text-5xl font-semibold tracking-tight md:text-7xl"
                                 style={{ animationDelay: '0.05s' }}
                             >
                                 Jelaskan idemu, AI tulis PRD &{' '}
@@ -141,20 +141,23 @@ export default function Welcome() {
                             </h1>
 
                             <p
-                                className="mx-auto mt-6 max-w-2xl animate-rise text-lg leading-8 text-muted-foreground"
+                                className="animate-rise text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-8"
                                 style={{ animationDelay: '0.1s' }}
                             >
-                                Ubah ide produk mentah menjadi dokumen spesifikasi (PRD) lengkap sekaligus mockup antarmuka pengguna (UI design) interaktif dalam hitungan menit. Siap ekspor untuk developer.
+                                Ubah ide produk mentah menjadi dokumen
+                                spesifikasi (PRD) lengkap sekaligus mockup
+                                antarmuka pengguna (UI design) interaktif dalam
+                                hitungan menit. Siap ekspor untuk developer.
                             </p>
 
                             <div
-                                className="mt-9 flex animate-rise flex-wrap justify-center gap-3"
+                                className="animate-rise mt-9 flex flex-wrap justify-center gap-3"
                                 style={{ animationDelay: '0.15s' }}
                             >
                                 <Button
                                     asChild
                                     size="lg"
-                                    className="group rounded-full px-7 shadow-xl shadow-primary/25"
+                                    className="shadow-primary/25 group rounded-full px-7 shadow-xl"
                                 >
                                     <Link href={primaryHref}>
                                         {auth.user
@@ -167,7 +170,7 @@ export default function Welcome() {
                                     asChild
                                     size="lg"
                                     variant="outline"
-                                    className="rounded-full border-border/70 bg-card/50 px-7 backdrop-blur-md"
+                                    className="border-border/70 bg-card/50 rounded-full px-7 backdrop-blur-md"
                                 >
                                     <Link
                                         href={auth.user ? dashboard() : login()}
@@ -179,7 +182,7 @@ export default function Welcome() {
                             </div>
 
                             <p
-                                className="mt-4 animate-rise text-sm text-muted-foreground"
+                                className="animate-rise text-muted-foreground mt-4 text-sm"
                                 style={{ animationDelay: '0.18s' }}
                             >
                                 Gratis dimulai · Tanpa kartu kredit · Hasil
@@ -187,7 +190,7 @@ export default function Welcome() {
                             </p>
 
                             <div
-                                className="mt-14 animate-rise"
+                                className="animate-rise mt-14"
                                 style={{ animationDelay: '0.2s' }}
                             >
                                 <HeroPreview />
@@ -196,8 +199,8 @@ export default function Welcome() {
                     </section>
 
                     {/* Marquee */}
-                    <section className="border-y border-border/60 bg-card/30 py-5 backdrop-blur-sm">
-                        <p className="mb-4 text-center text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
+                    <section className="border-border/60 bg-card/30 border-y py-5 backdrop-blur-sm">
+                        <p className="text-muted-foreground mb-4 text-center text-xs font-medium uppercase tracking-[0.18em]">
                             Dibuat untuk
                         </p>
                         <Marquee />
@@ -206,7 +209,7 @@ export default function Welcome() {
                     {/* How it works */}
                     <section className="mx-auto w-full max-w-6xl px-5 py-16 md:px-8 md:py-24">
                         <div className="mx-auto max-w-2xl text-center">
-                            <p className="text-xs font-medium tracking-[0.18em] text-primary uppercase">
+                            <p className="text-primary text-xs font-medium uppercase tracking-[0.18em]">
                                 Alur kerja
                             </p>
                             <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
@@ -215,24 +218,24 @@ export default function Welcome() {
                         </div>
 
                         <div className="relative mt-12 grid gap-5 md:grid-cols-4">
-                            <div className="absolute top-16 right-[12%] left-[12%] hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block" />
+                            <div className="via-border absolute left-[12%] right-[12%] top-16 hidden h-px bg-gradient-to-r from-transparent to-transparent md:block" />
                             {STEPS.map((step, index) => (
                                 <div
                                     key={step.title}
-                                    className="group relative rounded-2xl border border-border/70 bg-card/60 p-6 backdrop-blur-md transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5"
+                                    className="border-border/70 bg-card/60 hover:border-primary/40 hover:shadow-primary/5 group relative rounded-2xl border p-6 backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl"
                                 >
                                     <div className="flex items-center justify-between">
-                                        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                                        <div className="bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground flex size-12 items-center justify-center rounded-xl transition">
                                             <step.icon className="size-5" />
                                         </div>
-                                        <span className="bg-gradient-to-b from-foreground/20 to-transparent bg-clip-text text-4xl font-bold text-transparent">
+                                        <span className="from-foreground/20 bg-gradient-to-b to-transparent bg-clip-text text-4xl font-bold text-transparent">
                                             {String(index + 1).padStart(2, '0')}
                                         </span>
                                     </div>
                                     <h3 className="mt-5 text-lg font-semibold">
                                         {step.title}
                                     </h3>
-                                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                    <p className="text-muted-foreground mt-2 text-sm leading-6">
                                         {step.body}
                                     </p>
                                 </div>
@@ -243,7 +246,7 @@ export default function Welcome() {
                     {/* Bento features */}
                     <section className="mx-auto w-full max-w-6xl px-5 pb-16 md:px-8 md:pb-24">
                         <div className="mx-auto mb-12 max-w-2xl text-center">
-                            <p className="text-xs font-medium tracking-[0.18em] text-primary uppercase">
+                            <p className="text-primary text-xs font-medium uppercase tracking-[0.18em]">
                                 Fitur & Kemampuan
                             </p>
                             <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
@@ -284,8 +287,8 @@ export default function Welcome() {
 
                     {/* Final CTA */}
                     <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
-                        <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/50 px-6 py-14 text-center backdrop-blur-xl md:px-12 md:py-20">
-                            <div className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-primary/25 blur-[100px]" />
+                        <div className="border-border/70 bg-card/50 relative overflow-hidden rounded-3xl border px-6 py-14 text-center backdrop-blur-xl md:px-12 md:py-20">
+                            <div className="bg-primary/25 pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-[100px]" />
                             <div className="relative">
                                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
                                     Idemu layak jadi{' '}
@@ -293,14 +296,16 @@ export default function Welcome() {
                                         produk nyata
                                     </span>
                                 </h2>
-                                <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-                                    Mulai wawancara sekarang. Dapatkan dokumen spesifikasi PRD dan mockup desain UI yang siap pakai.
+                                <p className="text-muted-foreground mx-auto mt-4 max-w-xl">
+                                    Mulai wawancara sekarang. Dapatkan dokumen
+                                    spesifikasi PRD dan mockup desain UI yang
+                                    siap pakai.
                                 </p>
                                 <div className="mt-8 flex justify-center">
                                     <Button
                                         asChild
                                         size="lg"
-                                        className="group rounded-full px-8 shadow-xl shadow-primary/25"
+                                        className="shadow-primary/25 group rounded-full px-8 shadow-xl"
                                     >
                                         <Link href={primaryHref}>
                                             {auth.user
@@ -315,13 +320,13 @@ export default function Welcome() {
                     </section>
                 </main>
 
-                <footer className="relative z-10 border-t border-border/60">
-                    <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-5 py-7 text-sm text-muted-foreground md:flex-row md:px-8">
+                <footer className="border-border/60 relative z-10 border-t">
+                    <div className="text-muted-foreground mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-5 py-7 text-sm md:flex-row md:px-8">
                         <div className="flex items-center gap-2">
-                            <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                            <div className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg">
                                 <Sparkles className="size-3.5" />
                             </div>
-                            <span className="font-medium text-foreground">
+                            <span className="text-foreground font-medium">
                                 PRD.ai
                             </span>
                         </div>
@@ -339,13 +344,13 @@ function Aurora() {
             aria-hidden
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
         >
-            <div className="absolute -top-40 -left-32 size-[36rem] animate-aurora rounded-full bg-primary/20 blur-[120px]" />
+            <div className="animate-aurora bg-primary/20 absolute -left-32 -top-40 size-[36rem] rounded-full blur-[120px]" />
             <div
-                className="absolute -top-20 right-0 size-[32rem] animate-aurora rounded-full bg-[oklch(0.7_0.18_280/0.18)] blur-[120px]"
+                className="animate-aurora absolute -top-20 right-0 size-[32rem] rounded-full bg-[oklch(0.7_0.18_280/0.18)] blur-[120px]"
                 style={{ animationDelay: '-6s' }}
             />
             <div
-                className="absolute top-[40%] left-1/3 size-[30rem] animate-aurora rounded-full bg-[oklch(0.72_0.16_200/0.15)] blur-[120px]"
+                className="animate-aurora absolute left-1/3 top-[40%] size-[30rem] rounded-full bg-[oklch(0.72_0.16_200/0.15)] blur-[120px]"
                 style={{ animationDelay: '-12s' }}
             />
         </div>
@@ -357,13 +362,13 @@ function Marquee() {
 
     return (
         <div className="group relative flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_12%,#000_88%,transparent)]">
-            <div className="flex shrink-0 animate-marquee items-center gap-3 pr-3 group-hover:[animation-play-state:paused]">
+            <div className="animate-marquee flex shrink-0 items-center gap-3 pr-3 group-hover:[animation-play-state:paused]">
                 {items.map((item, index) => (
                     <span
                         key={`${item}-${index}`}
-                        className="flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-4 py-1.5 text-sm whitespace-nowrap text-muted-foreground backdrop-blur-sm"
+                        className="border-border/70 bg-background/60 text-muted-foreground flex items-center gap-2 whitespace-nowrap rounded-full border px-4 py-1.5 text-sm backdrop-blur-sm"
                     >
-                        <Sparkles className="size-3.5 text-primary" />
+                        <Sparkles className="text-primary size-3.5" />
                         {item}
                     </span>
                 ))}
@@ -388,19 +393,19 @@ function BentoCard({
     return (
         <div
             className={cn(
-                'group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card/60 p-6 backdrop-blur-md transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5',
+                'border-border/70 bg-card/60 hover:border-primary/40 hover:shadow-primary/5 group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-6 backdrop-blur-md transition hover:-translate-y-1 hover:shadow-xl',
                 className,
             )}
         >
             {accent ? (
-                <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-primary/15 blur-3xl transition group-hover:bg-primary/25" />
+                <div className="bg-primary/15 group-hover:bg-primary/25 pointer-events-none absolute -right-16 -top-16 size-48 rounded-full blur-3xl transition" />
             ) : null}
-            <div className="relative flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+            <div className="bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground relative flex size-11 items-center justify-center rounded-xl transition">
                 <Icon className="size-5" />
             </div>
             <div className="relative mt-4">
                 <h3 className="text-lg font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-sm leading-6">
                     {body}
                 </p>
             </div>
@@ -410,35 +415,36 @@ function BentoCard({
 
 function HeroPreview() {
     return (
-        <div className="mx-auto max-w-5xl animate-float">
+        <div className="animate-float mx-auto max-w-5xl">
             <div className="grid items-stretch gap-4 md:grid-cols-[1.2fr_auto_1.2fr_auto_1.5fr]">
                 {/* Input: messy idea */}
-                <div className="rounded-3xl border border-border/70 bg-card/60 p-5 text-left shadow-xl shadow-primary/5 backdrop-blur-xl">
-                    <div className="flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-muted-foreground uppercase">
+                <div className="border-border/70 bg-card/60 shadow-primary/5 rounded-3xl border p-5 text-left shadow-xl backdrop-blur-xl">
+                    <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
                         <Lightbulb className="size-4 text-amber-400" />
                         Idemu (mentah)
                     </div>
-                    <p className="mt-4 text-[14px] leading-6 text-foreground/90">
+                    <p className="text-foreground/90 mt-4 text-[14px] leading-6">
                         "Aku mau bikin app yang bantu founder nulis dokumen
-                        produk dan langsung dapet mockup UI yang siap didevelop..."
+                        produk dan langsung dapet mockup UI yang siap
+                        didevelop..."
                     </p>
-                    <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                        <MessageCircle className="size-3.5 text-primary" />
+                    <div className="text-muted-foreground mt-5 flex items-center gap-2 text-xs">
+                        <MessageCircle className="text-primary size-3.5" />
                         Lalu AI tanya 5 hal penting
                     </div>
                 </div>
 
                 {/* Transform arrow 1 */}
                 <div className="relative flex items-center justify-center">
-                    <div className="flex size-10 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary shadow-lg shadow-primary/20">
+                    <div className="border-primary/30 bg-primary/10 text-primary shadow-primary/20 flex size-10 items-center justify-center rounded-full border shadow-lg">
                         <Wand2 className="size-4" />
                     </div>
                 </div>
 
                 {/* Output 1: structured PRD */}
-                <div className="rounded-3xl border border-primary/30 bg-card/70 p-5 text-left shadow-xl shadow-primary/10 backdrop-blur-xl">
+                <div className="border-primary/30 bg-card/70 shadow-primary/10 rounded-3xl border p-5 text-left shadow-xl backdrop-blur-xl">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-primary uppercase">
+                        <div className="text-primary flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
                             <FileText className="size-4" />
                             PRD jadi
                         </div>
@@ -453,7 +459,7 @@ function HeroPreview() {
                         {PRD_SECTIONS.map((section) => (
                             <div
                                 key={section}
-                                className="flex items-center gap-2 text-sm text-muted-foreground"
+                                className="text-muted-foreground flex items-center gap-2 text-sm"
                             >
                                 <Check className="size-3.5 shrink-0 text-emerald-500" />
                                 {section}
@@ -464,20 +470,20 @@ function HeroPreview() {
 
                 {/* Transform arrow 2 */}
                 <div className="relative flex items-center justify-center">
-                    <div className="flex size-10 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary shadow-lg shadow-primary/20">
+                    <div className="border-primary/30 bg-primary/10 text-primary shadow-primary/20 flex size-10 items-center justify-center rounded-full border shadow-lg">
                         <Sparkles className="size-4 animate-pulse" />
                     </div>
                 </div>
 
                 {/* Output 2: Interactive UI */}
-                <div className="rounded-3xl border border-primary/30 bg-card/70 p-5 text-left shadow-xl shadow-primary/10 backdrop-blur-xl flex flex-col justify-between">
+                <div className="border-primary/30 bg-card/70 shadow-primary/10 flex flex-col justify-between rounded-3xl border p-5 text-left shadow-xl backdrop-blur-xl">
                     <div>
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-xs font-medium tracking-[0.16em] text-primary uppercase">
+                            <div className="text-primary flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
                                 <Layers className="size-4" />
                                 Desain UI
                             </div>
-                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+                            <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 text-[11px] font-medium">
                                 v1 (Live)
                             </span>
                         </div>
@@ -485,20 +491,22 @@ function HeroPreview() {
                             Dashboard Admin
                         </h3>
                         <div className="mt-3 space-y-2">
-                            <div className="h-2 w-full rounded bg-muted-foreground/15" />
+                            <div className="bg-muted-foreground/15 h-2 w-full rounded" />
                             <div className="grid grid-cols-3 gap-2">
-                                <div className="h-7 rounded border border-border/85 bg-background/60 p-1 flex items-center justify-center">
-                                    <LayoutDashboard className="size-3 text-muted-foreground" />
+                                <div className="border-border/85 bg-background/60 flex h-7 items-center justify-center rounded border p-1">
+                                    <LayoutDashboard className="text-muted-foreground size-3" />
                                 </div>
-                                <div className="h-7 rounded border border-border/85 bg-background/60 p-1 flex items-center justify-center">
-                                    <Smartphone className="size-3 text-muted-foreground" />
+                                <div className="border-border/85 bg-background/60 flex h-7 items-center justify-center rounded border p-1">
+                                    <Smartphone className="text-muted-foreground size-3" />
                                 </div>
-                                <div className="h-7 rounded border border-border/85 bg-background/60 p-1 flex items-center justify-center">
+                                <div className="border-border/85 bg-background/60 flex h-7 items-center justify-center rounded border p-1">
                                     <Check className="size-3 text-emerald-500" />
                                 </div>
                             </div>
-                            <div className="rounded border border-primary/20 bg-primary/5 p-2 text-[10px] leading-4 text-muted-foreground">
-                                <span className="font-semibold text-primary block">Tailwind v4 + React 19</span>
+                            <div className="border-primary/20 bg-primary/5 text-muted-foreground rounded border p-2 text-[10px] leading-4">
+                                <span className="text-primary block font-semibold">
+                                    Tailwind v4 + React 19
+                                </span>
                                 Clean, responsive layout.
                             </div>
                         </div>

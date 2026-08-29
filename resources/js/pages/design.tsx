@@ -90,8 +90,7 @@ const MODEL_LABELS: Record<string, string> = {
     'MiniMax-M3': 'MiniMax M3',
 };
 
-const modelLabel = (model: string): string =>
-    MODEL_LABELS[model] ?? model;
+const modelLabel = (model: string): string => MODEL_LABELS[model] ?? model;
 
 type PageProps = {
     auth: Auth;
@@ -261,11 +260,17 @@ function DesignWorkspace({
     } = useCanvases(current);
 
     // Per-canvas streaming HTML, keyed by kind. Empty object = nothing streaming.
-    const [streaming, setStreaming] = useState<Partial<Record<DesignKind, string>>>({});
+    const [streaming, setStreaming] = useState<
+        Partial<Record<DesignKind, string>>
+    >({});
 
     // Active-canvas convenience reads (replace the old single `html`/`messages`).
-    const activeCanvas: CanvasState =
-        canvases[activeKind] ?? { kind: activeKind, html: '', messages: [], prompt: '' };
+    const activeCanvas: CanvasState = canvases[activeKind] ?? {
+        kind: activeKind,
+        html: '',
+        messages: [],
+        prompt: '',
+    };
     const html = activeCanvas.html;
     const messages = activeCanvas.messages;
     const streamingHtml = streaming[activeKind] ?? '';
@@ -279,7 +284,9 @@ function DesignWorkspace({
     const [initialPrompt, setInitialPrompt] = useState(current?.prompt ?? '');
     const [image, setImage] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [activeMode, setActiveMode] = useState<'generate' | 'refine'>('generate');
+    const [activeMode, setActiveMode] = useState<'generate' | 'refine'>(
+        'generate',
+    );
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
@@ -400,19 +407,28 @@ function DesignWorkspace({
         return list;
     }, [messages]);
 
-    const [currentVersionIndex, setCurrentVersionIndex] = useState<number | null>(null);
+    const [currentVersionIndex, setCurrentVersionIndex] = useState<
+        number | null
+    >(null);
 
     // Jump to the newest version whenever the canvas changes or history grows.
     // Adjusted during render rather than in an effect: an effect would render
     // one frame pointing at a stale version, then cascade a second render.
     // https://react.dev/learn/you-might-not-need-an-effect
-    const [prevVersionsLength, setPrevVersionsLength] = useState(versions.length);
+    const [prevVersionsLength, setPrevVersionsLength] = useState(
+        versions.length,
+    );
     const [prevActiveKind, setPrevActiveKind] = useState(activeKind);
 
-    if (prevActiveKind !== activeKind || prevVersionsLength !== versions.length) {
+    if (
+        prevActiveKind !== activeKind ||
+        prevVersionsLength !== versions.length
+    ) {
         setPrevActiveKind(activeKind);
         setPrevVersionsLength(versions.length);
-        setCurrentVersionIndex(versions.length > 0 ? versions.length - 1 : null);
+        setCurrentVersionIndex(
+            versions.length > 0 ? versions.length - 1 : null,
+        );
     } else if (currentVersionIndex === null && versions.length > 0) {
         setCurrentVersionIndex(versions.length - 1);
     }
@@ -420,7 +436,12 @@ function DesignWorkspace({
     const handleSelectVersion = (index: number) => {
         if (index >= 0 && index < versions.length) {
             setCurrentVersionIndex(index);
-            applyCanvasResult(activeKind, versions[index].html, messages, activeCanvas.prompt ?? '');
+            applyCanvasResult(
+                activeKind,
+                versions[index].html,
+                messages,
+                activeCanvas.prompt ?? '',
+            );
         }
     };
 
@@ -434,7 +455,7 @@ function DesignWorkspace({
         isRegenerate: boolean = false,
     ) => {
         const id = currentIdRef.current;
-        const promptToPersist = isRegenerate ? prompt : (initialPrompt || prompt);
+        const promptToPersist = isRegenerate ? prompt : initialPrompt || prompt;
         const activeData = canvasMap[activeKind];
 
         const canvasesPayload = selectedKinds.map((k) => ({
@@ -514,8 +535,12 @@ function DesignWorkspace({
             }
         } catch (saveError) {
             const reason =
-                saveError instanceof Error ? saveError.message : 'Penyebab tidak diketahui';
-            toast.error(`Design belum tersimpan (${reason}). Hasil masih ada di layar.`);
+                saveError instanceof Error
+                    ? saveError.message
+                    : 'Penyebab tidak diketahui';
+            toast.error(
+                `Design belum tersimpan (${reason}). Hasil masih ada di layar.`,
+            );
         } finally {
             setIsSaving(false);
         }
@@ -544,8 +569,13 @@ function DesignWorkspace({
         setViewMode('preview');
         setCurrentVersionIndex(null);
 
-        const userMessage: DesignMessage = { role: 'user', content: instruction };
-        const results: Partial<Record<DesignKind, { html: string; messages: DesignMessage[] }>> = {};
+        const userMessage: DesignMessage = {
+            role: 'user',
+            content: instruction,
+        };
+        const results: Partial<
+            Record<DesignKind, { html: string; messages: DesignMessage[] }>
+        > = {};
         const errorMessages: string[] = [];
         let abortedByUser = false;
 
@@ -574,7 +604,9 @@ function DesignWorkspace({
                                         kind: k,
                                         prompt: instruction,
                                         current_html:
-                                            mode === 'refine' ? activeHtml : null,
+                                            mode === 'refine'
+                                                ? activeHtml
+                                                : null,
                                         image,
                                     },
                                     signal: controller.signal,
@@ -609,7 +641,9 @@ function DesignWorkspace({
                         }
 
                         if (!finalHtml.trim()) {
-                            throw new Error(`Canvas ${k} tidak menghasilkan kode yang bisa dibaca.`);
+                            throw new Error(
+                                `Canvas ${k} tidak menghasilkan kode yang bisa dibaca.`,
+                            );
                         }
 
                         // Refining an older version must branch from THAT point,
@@ -624,7 +658,8 @@ function DesignWorkspace({
                                 currentVersionIndex !== null &&
                                 currentVersionIndex < versions.length - 1
                             ) {
-                                const activeVersion = versions[currentVersionIndex];
+                                const activeVersion =
+                                    versions[currentVersionIndex];
                                 baseMessages = canvasMessages.slice(
                                     0,
                                     activeVersion.messageIndex + 1,
@@ -663,7 +698,12 @@ function DesignWorkspace({
 
                 if (r) {
                     nextMap[k] = {
-                        ...(nextMap[k] ?? { kind: k, html: '', messages: [], prompt: '' }),
+                        ...(nextMap[k] ?? {
+                            kind: k,
+                            html: '',
+                            messages: [],
+                            prompt: '',
+                        }),
                         kind: k,
                         html: r.html,
                         messages: r.messages,
@@ -702,7 +742,9 @@ function DesignWorkspace({
                 } else {
                     // Nothing succeeded — surface a general failure, keeping the
                     // "Failed to fetch" friendly message when relevant.
-                    const message = errorMessages[0] ?? 'Design belum bisa dibuat. Coba lagi.';
+                    const message =
+                        errorMessages[0] ??
+                        'Design belum bisa dibuat. Coba lagi.';
                     setError(
                         message === 'Failed to fetch'
                             ? 'Server Laravel terputus. Jalankan ulang server lalu coba lagi.'
@@ -720,7 +762,10 @@ function DesignWorkspace({
     const commitHtml = (editedHtml: string, notice: string) => {
         let activeMessages = messages;
 
-        if (currentVersionIndex !== null && currentVersionIndex < versions.length - 1) {
+        if (
+            currentVersionIndex !== null &&
+            currentVersionIndex < versions.length - 1
+        ) {
             const activeVersion = versions[currentVersionIndex];
             activeMessages = messages.slice(0, activeVersion.messageIndex + 1);
         }
@@ -817,153 +862,156 @@ function DesignWorkspace({
         <>
             <Head title="Design Studio" />
 
-            <div className="m3 flex min-h-screen flex-col bg-background text-foreground">
+            <div className="m3 bg-background text-foreground flex min-h-screen flex-col">
                 <div className="flex flex-1">
-                <HistorySidebar
-                    history={history}
-                    currentId={currentId}
-                    open={historyOpen}
-                    onClose={() => setHistoryOpen(false)}
-                    onNew={startNew}
-                    onOpen={openDesign}
-                    onDelete={deleteDesign}
-                />
+                    <HistorySidebar
+                        history={history}
+                        currentId={currentId}
+                        open={historyOpen}
+                        onClose={() => setHistoryOpen(false)}
+                        onNew={startNew}
+                        onOpen={openDesign}
+                        onDelete={deleteDesign}
+                    />
 
-                <Dialog
-                    open={pendingDeleteId !== null}
-                    onOpenChange={(open) => !open && setPendingDeleteId(null)}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Hapus Design?</DialogTitle>
-                            <DialogDescription>
-                                Tindakan ini tidak bisa dibatalkan. Design
-                                beserta seluruh isinya akan dihapus permanen.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setPendingDeleteId(null)}
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={confirmDelete}
-                            >
-                                Hapus
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center border-b border-border/60 bg-[var(--m3-surface-1)]">
-                        <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
-                            <div className="flex items-center gap-2">
+                    <Dialog
+                        open={pendingDeleteId !== null}
+                        onOpenChange={(open) =>
+                            !open && setPendingDeleteId(null)
+                        }
+                    >
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Hapus Design?</DialogTitle>
+                                <DialogDescription>
+                                    Tindakan ini tidak bisa dibatalkan. Design
+                                    beserta seluruh isinya akan dihapus
+                                    permanen.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
                                 <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                        'transition-all',
-                                        historyOpen ? 'hidden' : 'flex',
-                                    )}
-                                    aria-label="Buka riwayat"
-                                    onClick={() => setHistoryOpen(true)}
+                                    variant="outline"
+                                    onClick={() => setPendingDeleteId(null)}
                                 >
-                                    <PanelLeft className="size-4" />
+                                    Batal
                                 </Button>
-                                <div className="flex size-9 items-center justify-center rounded-full bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)]">
-                                    <Layout className="size-4" />
+                                <Button
+                                    variant="destructive"
+                                    onClick={confirmDelete}
+                                >
+                                    Hapus
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <div className="flex min-w-0 flex-1 flex-col">
+                        <header className="border-border/60 sticky top-0 z-20 flex h-16 shrink-0 items-center border-b bg-[var(--m3-surface-1)]">
+                            <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                            'transition-all',
+                                            historyOpen ? 'hidden' : 'flex',
+                                        )}
+                                        aria-label="Buka riwayat"
+                                        onClick={() => setHistoryOpen(true)}
+                                    >
+                                        <PanelLeft className="size-4" />
+                                    </Button>
+                                    <div className="flex size-9 items-center justify-center rounded-full bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)]">
+                                        <Layout className="size-4" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-sm font-medium tracking-tight">
+                                            Design Studio
+                                        </h1>
+                                        <p className="text-xs text-[var(--m3-on-surface-var)]">
+                                            Workspace {user.name}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-sm font-medium tracking-tight">
-                                        Design Studio
-                                    </h1>
-                                    <p className="text-xs text-[var(--m3-on-surface-var)]">
-                                        Workspace {user.name}
-                                    </p>
+
+                                <div className="flex items-center gap-3">
+                                    {isSaving ? (
+                                        <span className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
+                                            <Loader2 className="size-3 animate-spin" />
+                                            Menyimpan
+                                        </span>
+                                    ) : null}
+                                    <UserMenu user={user} />
                                 </div>
                             </div>
+                        </header>
 
-                            <div className="flex items-center gap-3">
-                                {isSaving ? (
-                                    <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-                                        <Loader2 className="size-3 animate-spin" />
-                                        Menyimpan
-                                    </span>
-                                ) : null}
-                                <UserMenu user={user} />
-                            </div>
-                        </div>
-                    </header>
-
-                    <div className="grid flex-1 grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)]">
-                        <PromptPanel
-                            selectedKinds={selectedKinds}
-                            onToggleKind={toggleKind}
-                            model={model}
-                            models={aiModels}
-                            areModelsLoading={areModelsLoading}
-                            modelError={modelError}
-                            prompt={prompt}
-                            initialPrompt={initialPrompt}
-                            hasDesign={hasDesign}
-                            isGenerating={isGenerating}
-                            activeStep={activeStep}
-                            error={error}
-                            editMode={editMode}
-                            selected={selected}
-                            image={image}
-                            fromPrd={fromPrd}
-                            onModelChange={setSelectedModel}
-                            onPromptChange={setPrompt}
-                            onImageChange={setImage}
-                            onGenerate={() => generate('generate')}
-                            onRefine={() => generate('refine')}
-                            onStop={stopGeneration}
-                            onUpdateSelected={(patch) =>
-                                previewRef.current?.updateSelected(patch)
-                            }
-                            onClearPrdContext={onClearPrdContext}
-                            versions={versions}
-                            currentVersionIndex={currentVersionIndex}
-                            onSelectVersion={handleSelectVersion}
-                        />
-
-                        <PreviewPanel
-                            ref={previewRef}
-                            html={html}
-                            streamingHtml={streamingHtml}
-                            selectedKinds={selectedKinds}
-                            activeKind={activeKind}
-                            onTabChange={setActiveKind}
-                            streaming={streaming}
-                            hasDesign={hasDesign}
-                            isGenerating={isGenerating}
-                            activeMode={activeMode}
-                            editMode={editMode}
-                            designId={currentId}
-                            viewMode={viewMode}
-                            copied={copied}
-                            onViewModeChange={(mode) => {
-                                if (mode === 'code') {
-                                    handleShowCode();
-                                } else {
-                                    setViewMode('preview');
+                        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)]">
+                            <PromptPanel
+                                selectedKinds={selectedKinds}
+                                onToggleKind={toggleKind}
+                                model={model}
+                                models={aiModels}
+                                areModelsLoading={areModelsLoading}
+                                modelError={modelError}
+                                prompt={prompt}
+                                initialPrompt={initialPrompt}
+                                hasDesign={hasDesign}
+                                isGenerating={isGenerating}
+                                activeStep={activeStep}
+                                error={error}
+                                editMode={editMode}
+                                selected={selected}
+                                image={image}
+                                fromPrd={fromPrd}
+                                onModelChange={setSelectedModel}
+                                onPromptChange={setPrompt}
+                                onImageChange={setImage}
+                                onGenerate={() => generate('generate')}
+                                onRefine={() => generate('refine')}
+                                onStop={stopGeneration}
+                                onUpdateSelected={(patch) =>
+                                    previewRef.current?.updateSelected(patch)
                                 }
-                            }}
-                            onToggleEdit={toggleEditMode}
-                            onDownloadHtml={downloadHtml}
-                            onSelect={setSelected}
-                            onSave={saveEdits}
-                            onCopyCode={copyToClipboard}
-                            onStop={stopGeneration}
-                        />
+                                onClearPrdContext={onClearPrdContext}
+                                versions={versions}
+                                currentVersionIndex={currentVersionIndex}
+                                onSelectVersion={handleSelectVersion}
+                            />
+
+                            <PreviewPanel
+                                ref={previewRef}
+                                html={html}
+                                streamingHtml={streamingHtml}
+                                selectedKinds={selectedKinds}
+                                activeKind={activeKind}
+                                onTabChange={setActiveKind}
+                                streaming={streaming}
+                                hasDesign={hasDesign}
+                                isGenerating={isGenerating}
+                                activeMode={activeMode}
+                                editMode={editMode}
+                                designId={currentId}
+                                viewMode={viewMode}
+                                copied={copied}
+                                onViewModeChange={(mode) => {
+                                    if (mode === 'code') {
+                                        handleShowCode();
+                                    } else {
+                                        setViewMode('preview');
+                                    }
+                                }}
+                                onToggleEdit={toggleEditMode}
+                                onDownloadHtml={downloadHtml}
+                                onSelect={setSelected}
+                                onSave={saveEdits}
+                                onCopyCode={copyToClipboard}
+                                onStop={stopGeneration}
+                            />
+                        </div>
                     </div>
-                </div>
                 </div>
 
                 {/* Global workspace action: create a fresh design. Generate stays
@@ -1074,7 +1122,7 @@ function PromptPanel({
     // When editing, the left panel becomes the property inspector.
     if (editMode && hasDesign && !isGenerating) {
         return (
-            <aside className="flex flex-col gap-5 border-b border-border/60 bg-[var(--m3-surface-1)] p-4 md:p-6 lg:border-r lg:border-b-0">
+            <aside className="border-border/60 flex flex-col gap-5 border-b bg-[var(--m3-surface-1)] p-4 md:p-6 lg:border-b-0 lg:border-r">
                 <Inspector selected={selected} onUpdate={onUpdateSelected} />
             </aside>
         );
@@ -1106,7 +1154,7 @@ function PromptPanel({
     };
 
     return (
-        <aside className="flex flex-col gap-5 border-b border-border/60 bg-[var(--m3-surface-1)] p-4 md:p-6 lg:border-r lg:border-b-0">
+        <aside className="border-border/60 flex flex-col gap-5 border-b bg-[var(--m3-surface-1)] p-4 md:p-6 lg:border-b-0 lg:border-r">
             <div>
                 <p className="mb-2 text-sm font-medium">Jenis halaman</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -1136,21 +1184,31 @@ function PromptPanel({
             </div>
 
             {hasDesign && initialPrompt ? (
-                <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs">
-                    <p className="font-semibold text-muted-foreground">Prompt awal:</p>
-                    <p className="mt-1 text-foreground line-clamp-3" title={initialPrompt}>
+                <div className="border-border bg-muted/40 rounded-lg border p-3 text-xs">
+                    <p className="text-muted-foreground font-semibold">
+                        Prompt awal:
+                    </p>
+                    <p
+                        className="text-foreground mt-1 line-clamp-3"
+                        title={initialPrompt}
+                    >
                         {initialPrompt}
                     </p>
                 </div>
             ) : null}
 
             {fromPrd && !hasDesign ? (
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs">
+                <div className="border-primary/20 bg-primary/5 flex items-center justify-between gap-3 rounded-lg border p-3 text-xs">
                     <div className="flex min-w-0 items-center gap-2">
-                        <FileText className="size-4 text-primary shrink-0" />
+                        <FileText className="text-primary size-4 shrink-0" />
                         <div className="min-w-0">
-                            <p className="font-semibold text-primary">Konteks PRD terhubung:</p>
-                            <p className="mt-0.5 text-muted-foreground truncate" title={fromPrd.title}>
+                            <p className="text-primary font-semibold">
+                                Konteks PRD terhubung:
+                            </p>
+                            <p
+                                className="text-muted-foreground mt-0.5 truncate"
+                                title={fromPrd.title}
+                            >
                                 {fromPrd.title}
                             </p>
                         </div>
@@ -1159,7 +1217,7 @@ function PromptPanel({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                        className="text-muted-foreground hover:text-foreground h-6 w-6 shrink-0"
                         onClick={onClearPrdContext}
                     >
                         <X className="size-3.5" />
@@ -1169,8 +1227,10 @@ function PromptPanel({
 
             <div>
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                    <Sparkles className="size-4 text-primary" />
-                    {hasDesign ? 'Minta revisi atau tambahan fitur' : 'Deskripsi design'}
+                    <Sparkles className="text-primary size-4" />
+                    {hasDesign
+                        ? 'Minta revisi atau tambahan fitur'
+                        : 'Deskripsi design'}
                 </div>
                 <textarea
                     value={prompt}
@@ -1182,22 +1242,22 @@ function PromptPanel({
                             : EXAMPLE_PROMPTS[selectedKinds[0]]
                     }
                     disabled={isGenerating}
-                    className="min-h-40 w-full resize-none rounded-lg border border-input bg-background p-3 text-sm leading-6 transition outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                    className="border-input bg-background focus:border-ring focus:ring-ring/30 min-h-40 w-full resize-none rounded-lg border p-3 text-sm leading-6 outline-none transition focus:ring-2 disabled:opacity-60"
                 />
 
                 {image ? (
-                    <div className="relative mt-2 flex items-center justify-between rounded-lg border border-border bg-background p-2 pr-10">
+                    <div className="border-border bg-background relative mt-2 flex items-center justify-between rounded-lg border p-2 pr-10">
                         <div className="flex min-w-0 items-center gap-2">
                             <img
                                 src={image}
                                 alt="Screenshot preview"
-                                className="size-12 shrink-0 rounded border border-border object-cover"
+                                className="border-border size-12 shrink-0 rounded border object-cover"
                             />
                             <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-foreground">
+                                <p className="text-foreground truncate text-xs font-medium">
                                     Screenshot terlampir
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">
+                                <p className="text-muted-foreground text-[10px]">
                                     Siap dikirim ke AI
                                 </p>
                             </div>
@@ -1206,7 +1266,7 @@ function PromptPanel({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="absolute top-1/2 right-2 size-7 -translate-y-1/2 rounded-md hover:bg-destructive/10 hover:text-destructive"
+                            className="hover:bg-destructive/10 hover:text-destructive absolute right-2 top-1/2 size-7 -translate-y-1/2 rounded-md"
                             onClick={() => onImageChange(null)}
                             aria-label="Hapus gambar"
                         >
@@ -1215,7 +1275,7 @@ function PromptPanel({
                     </div>
                 ) : (
                     <div className="mt-2">
-                        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-xs text-muted-foreground transition hover:border-primary/50 hover:bg-accent">
+                        <label className="border-border text-muted-foreground hover:border-primary/50 hover:bg-accent flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed py-2.5 text-xs transition">
                             <Upload className="size-3.5" />
                             <span>
                                 Unggah screenshot (opsional) / Tempel gambar
@@ -1234,9 +1294,11 @@ function PromptPanel({
                 {!hasDesign && (
                     <button
                         type="button"
-                        onClick={() => onPromptChange(EXAMPLE_PROMPTS[selectedKinds[0]])}
+                        onClick={() =>
+                            onPromptChange(EXAMPLE_PROMPTS[selectedKinds[0]])
+                        }
                         disabled={isGenerating}
-                        className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                        className="text-muted-foreground hover:text-foreground mt-2 text-xs underline-offset-2 hover:underline disabled:opacity-50"
                     >
                         Gunakan contoh prompt
                     </button>
@@ -1244,7 +1306,7 @@ function PromptPanel({
             </div>
 
             <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">Model</span>
+                <span className="text-muted-foreground text-xs">Model</span>
                 <Select
                     value={model}
                     onValueChange={(value) => onModelChange(value as Model)}
@@ -1267,16 +1329,17 @@ function PromptPanel({
             </div>
 
             {areModelsLoading ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                     Memuat model dari Base URL provider...
                 </p>
             ) : modelError ? (
-                <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <div className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
                     {modelError}
                 </div>
             ) : null}
 
-            {image && (model.startsWith('deepseek') || model === 'MiniMax-M3') ? (
+            {image &&
+            (model.startsWith('deepseek') || model === 'MiniMax-M3') ? (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400">
                     <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
                     <span>
@@ -1362,14 +1425,17 @@ function PromptPanel({
             </div>
 
             {hasDesign && versions.length > 0 && (
-                <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm backdrop-blur-sm space-y-3">
+                <div className="border-border bg-card/60 space-y-3 rounded-xl border p-4 shadow-sm backdrop-blur-sm">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            <History className="size-3.5 text-primary" />
+                        <div className="text-muted-foreground flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
+                            <History className="text-primary size-3.5" />
                             Riwayat Revisi ({versions.length})
                         </div>
-                        <span className="text-[10px] rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
-                            v{currentVersionIndex !== null ? currentVersionIndex + 1 : 1}
+                        <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px] font-medium">
+                            v
+                            {currentVersionIndex !== null
+                                ? currentVersionIndex + 1
+                                : 1}
                         </span>
                     </div>
 
@@ -1378,18 +1444,30 @@ function PromptPanel({
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9 shrink-0 animate-in fade-in duration-200"
-                            disabled={currentVersionIndex === null || currentVersionIndex === 0 || isGenerating}
-                            onClick={() => onSelectVersion(currentVersionIndex! - 1)}
+                            className="animate-in fade-in h-9 w-9 shrink-0 duration-200"
+                            disabled={
+                                currentVersionIndex === null ||
+                                currentVersionIndex === 0 ||
+                                isGenerating
+                            }
+                            onClick={() =>
+                                onSelectVersion(currentVersionIndex! - 1)
+                            }
                             aria-label="Versi sebelumnya"
                         >
                             <ChevronLeft className="size-4" />
                         </Button>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1">
                             <Select
-                                value={currentVersionIndex !== null ? String(currentVersionIndex) : undefined}
-                                onValueChange={(val) => onSelectVersion(Number(val))}
+                                value={
+                                    currentVersionIndex !== null
+                                        ? String(currentVersionIndex)
+                                        : undefined
+                                }
+                                onValueChange={(val) =>
+                                    onSelectVersion(Number(val))
+                                }
                                 disabled={isGenerating || versions.length <= 1}
                             >
                                 <SelectTrigger className="h-9 w-full text-xs">
@@ -1397,13 +1475,19 @@ function PromptPanel({
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
                                     {versions.map((v) => (
-                                        <SelectItem key={v.index} value={String(v.index)}>
-                                            <span className="font-semibold mr-1">v{v.index + 1}:</span>
-                                            <span className="truncate max-w-[200px] inline-block align-bottom">
+                                        <SelectItem
+                                            key={v.index}
+                                            value={String(v.index)}
+                                        >
+                                            <span className="mr-1 font-semibold">
+                                                v{v.index + 1}:
+                                            </span>
+                                            <span className="inline-block max-w-[200px] truncate align-bottom">
                                                 {v.description}
                                             </span>
-                                            {v.index === versions.length - 1 && (
-                                                <span className="ml-1 text-[10px] text-muted-foreground font-normal">
+                                            {v.index ===
+                                                versions.length - 1 && (
+                                                <span className="text-muted-foreground ml-1 text-[10px] font-normal">
                                                     (Terbaru)
                                                 </span>
                                             )}
@@ -1417,37 +1501,46 @@ function PromptPanel({
                             type="button"
                             variant="outline"
                             size="icon"
-                            className="h-9 w-9 shrink-0 animate-in fade-in duration-200"
-                            disabled={currentVersionIndex === null || currentVersionIndex === versions.length - 1 || isGenerating}
-                            onClick={() => onSelectVersion(currentVersionIndex! + 1)}
+                            className="animate-in fade-in h-9 w-9 shrink-0 duration-200"
+                            disabled={
+                                currentVersionIndex === null ||
+                                currentVersionIndex === versions.length - 1 ||
+                                isGenerating
+                            }
+                            onClick={() =>
+                                onSelectVersion(currentVersionIndex! + 1)
+                            }
                             aria-label="Versi berikutnya"
                         >
                             <ChevronRight className="size-4" />
                         </Button>
                     </div>
 
-                    {currentVersionIndex !== null && currentVersionIndex < versions.length - 1 && (
-                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-600 dark:text-amber-400 animate-in fade-in slide-in-from-top-1 duration-200">
-                            <div className="flex gap-2">
-                                <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-500" />
-                                <div className="space-y-1">
-                                    <p className="font-semibold text-amber-700 dark:text-amber-300">
-                                        Melihat Versi Lama
-                                    </p>
-                                    <p className="text-muted-foreground leading-relaxed text-[11px]">
-                                        Membuat revisi atau menyimpan visual dari sini akan memulai cabang baru. Versi setelah ini akan dihapus.
-                                    </p>
+                    {currentVersionIndex !== null &&
+                        currentVersionIndex < versions.length - 1 && (
+                            <div className="animate-in fade-in slide-in-from-top-1 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-600 duration-200 dark:text-amber-400">
+                                <div className="flex gap-2">
+                                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                                    <div className="space-y-1">
+                                        <p className="font-semibold text-amber-700 dark:text-amber-300">
+                                            Melihat Versi Lama
+                                        </p>
+                                        <p className="text-muted-foreground text-[11px] leading-relaxed">
+                                            Membuat revisi atau menyimpan visual
+                                            dari sini akan memulai cabang baru.
+                                            Versi setelah ini akan dihapus.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             )}
 
             {isGenerating ? <BuildSteps activeStep={activeStep} /> : null}
 
             {error ? (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
                     {error}
                 </div>
             ) : null}
@@ -1457,9 +1550,9 @@ function PromptPanel({
 
 function BuildSteps({ activeStep }: { activeStep: number }) {
     return (
-        <div className="rounded-xl border border-border bg-background p-4">
+        <div className="border-border bg-background rounded-xl border p-4">
             <div className="flex items-center gap-2 text-sm font-medium">
-                <Loader2 className="size-4 animate-spin text-primary" />
+                <Loader2 className="text-primary size-4 animate-spin" />
                 AI sedang membangun design
             </div>
             <ol className="mt-4 space-y-2.5">
@@ -1519,20 +1612,20 @@ function Inspector({
     return (
         <div>
             <div className="flex items-center gap-2 text-sm font-medium">
-                <MousePointerClick className="size-4 text-primary" />
+                <MousePointerClick className="text-primary size-4" />
                 Editor komponen
             </div>
 
             {!selected ? (
-                <p className="mt-4 rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+                <p className="border-border bg-background text-muted-foreground mt-4 rounded-lg border border-dashed p-4 text-sm">
                     Klik elemen apa pun di preview untuk mengeditnya. Teks,
                     warna, dan font bisa diubah di sini.
                 </p>
             ) : (
                 <div className="mt-4 space-y-5">
-                    <div className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                    <div className="border-border bg-background text-muted-foreground rounded-lg border px-3 py-2 text-xs">
                         Elemen terpilih:{' '}
-                        <span className="font-medium text-foreground">
+                        <span className="text-foreground font-medium">
                             {selected.tag}
                         </span>
                     </div>
@@ -1544,7 +1637,7 @@ function Inspector({
                                 onChange={(event) =>
                                     onUpdate({ text: event.target.value })
                                 }
-                                className="min-h-20 w-full resize-none rounded-lg border border-input bg-background p-2.5 text-sm leading-6 outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                className="border-input bg-background focus:border-ring focus:ring-ring/30 min-h-20 w-full resize-none rounded-lg border p-2.5 text-sm leading-6 outline-none focus:ring-2"
                             />
                         </Field>
                     ) : null}
@@ -1574,7 +1667,7 @@ function Inspector({
                                     fontSize: Number(event.target.value),
                                 })
                             }
-                            className="w-full accent-primary"
+                            className="accent-primary w-full"
                         />
                     </Field>
 
@@ -1641,7 +1734,7 @@ function Field({
 }) {
     return (
         <div>
-            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <label className="text-muted-foreground mb-1.5 flex items-center gap-1.5 text-xs font-medium">
                 {Icon ? <Icon className="size-3.5" /> : null}
                 {label}
             </label>
@@ -1666,14 +1759,14 @@ function ColorField({
                     type="color"
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
-                    className="size-9 shrink-0 cursor-pointer rounded-md border border-input bg-background"
+                    className="border-input bg-background size-9 shrink-0 cursor-pointer rounded-md border"
                     aria-label={label}
                 />
                 <input
                     type="text"
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
-                    className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    className="border-input bg-background focus:border-ring focus:ring-ring/30 h-9 w-full rounded-lg border px-2.5 text-sm outline-none focus:ring-2"
                 />
             </div>
         </Field>
@@ -1760,14 +1853,15 @@ const PreviewPanel = (() => {
         return (
             <section className="flex min-h-[60vh] flex-col bg-[var(--m3-surface-2)]">
                 {selectedKinds.length > 1 ? (
-                    <div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5">
+                    <div className="border-border flex shrink-0 items-center gap-1 border-b px-2 py-1.5">
                         {selectedKinds.map((k) => {
                             const labels: Record<DesignKind, string> = {
                                 'landing-page': 'Landing',
                                 dashboard: 'Dashboard',
                                 'mobile-app': 'Mobile',
                             };
-                            const isStreaming = typeof streaming[k] === 'string';
+                            const isStreaming =
+                                typeof streaming[k] === 'string';
 
                             return (
                                 <button
@@ -1791,14 +1885,14 @@ const PreviewPanel = (() => {
                         })}
                     </div>
                 ) : null}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/60 px-4 py-3 md:px-5">
+                <div className="border-border bg-background/60 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 md:px-5">
                     <div className="flex items-center gap-2 text-sm font-medium">
                         {isGenerating ? (
                             <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-2">
                                     <span className="relative flex size-2">
-                                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/60" />
-                                        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                                        <span className="bg-primary/60 absolute inline-flex size-full animate-ping rounded-full" />
+                                        <span className="bg-primary relative inline-flex size-2 rounded-full" />
                                     </span>
                                     AI sedang mendesain langsung
                                 </span>
@@ -1814,13 +1908,13 @@ const PreviewPanel = (() => {
                                 </Button>
                             </div>
                         ) : hasDesign ? (
-                            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-0.5">
+                            <div className="border-border bg-muted/50 flex items-center gap-1 rounded-lg border p-0.5">
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className={cn(
-                                        'h-7 px-3 text-xs rounded-md gap-1.5',
+                                        'h-7 gap-1.5 rounded-md px-3 text-xs',
                                         viewMode === 'preview'
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground',
@@ -1836,7 +1930,7 @@ const PreviewPanel = (() => {
                                     variant="ghost"
                                     size="sm"
                                     className={cn(
-                                        'h-7 px-3 text-xs rounded-md gap-1.5',
+                                        'h-7 gap-1.5 rounded-md px-3 text-xs',
                                         viewMode === 'code'
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground',
@@ -1850,14 +1944,14 @@ const PreviewPanel = (() => {
                             </div>
                         ) : (
                             <>
-                                <Eye className="size-4 text-primary" />
+                                <Eye className="text-primary size-4" />
                                 Live preview
                             </>
                         )}
                     </div>
 
                     {hasDesign && viewMode === 'preview' && (
-                        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-0.5">
+                        <div className="border-border bg-muted/50 flex items-center gap-1 rounded-lg border p-0.5">
                             {[
                                 {
                                     id: 'desktop',
@@ -1884,7 +1978,7 @@ const PreviewPanel = (() => {
                                             'h-7 w-7 rounded-md p-0',
                                             isActive
                                                 ? 'bg-background text-foreground shadow-sm'
-                                                : 'text-muted-foreground hover:bg-transparent hover:text-foreground',
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-transparent',
                                         )}
                                         onClick={() => setDevice(d.id as any)}
                                         aria-label={d.label}
@@ -1902,12 +1996,16 @@ const PreviewPanel = (() => {
                                 <>
                                     <Button
                                         type="button"
-                                        variant={editMode ? 'default' : 'outline'}
+                                        variant={
+                                            editMode ? 'default' : 'outline'
+                                        }
                                         size="sm"
                                         onClick={onToggleEdit}
                                     >
                                         <Pencil className="size-4" />
-                                        {editMode ? 'Selesai edit' : 'Edit visual'}
+                                        {editMode
+                                            ? 'Selesai edit'
+                                            : 'Edit visual'}
                                     </Button>
                                     {editMode && (
                                         <Button
@@ -1952,9 +2050,7 @@ const PreviewPanel = (() => {
                             </Button>
                             {designId && viewMode === 'preview' && (
                                 <Button type="button" size="sm" asChild>
-                                    <a
-                                        href={`/designs/${designId}/export`}
-                                    >
+                                    <a href={`/designs/${designId}/export`}>
                                         <FileArchive className="size-4" />
                                         ZIP
                                     </a>
@@ -1965,8 +2061,8 @@ const PreviewPanel = (() => {
                 </div>
 
                 {editMode && hasDesign && !isGenerating ? (
-                    <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/10 px-4 py-2 text-xs text-foreground md:px-5">
-                        <Code2 className="size-3.5 text-primary" />
+                    <div className="border-primary/20 bg-primary/10 text-foreground flex items-center gap-2 border-b px-4 py-2 text-xs md:px-5">
+                        <Code2 className="text-primary size-3.5" />
                         Klik elemen di preview, lalu ubah lewat panel kiri.
                         Tekan Simpan saat selesai.
                     </div>
@@ -1981,16 +2077,21 @@ const PreviewPanel = (() => {
                     }}
                 >
                     {viewMode === 'code' ? (
-                        <div className="size-full max-w-6xl rounded-xl border border-border bg-neutral-950 p-6 font-mono text-xs text-neutral-200 shadow-2xl overflow-auto leading-5 select-text">
-                            <pre className="whitespace-pre-wrap break-all selection:bg-primary selection:text-primary-foreground">
-                                <code dangerouslySetInnerHTML={{ __html: highlightHtml(html) }} />
+                        <div className="border-border size-full max-w-6xl select-text overflow-auto rounded-xl border bg-neutral-950 p-6 font-mono text-xs leading-5 text-neutral-200 shadow-2xl">
+                            <pre className="selection:bg-primary selection:text-primary-foreground whitespace-pre-wrap break-all">
+                                <code
+                                    dangerouslySetInnerHTML={{
+                                        __html: highlightHtml(html),
+                                    }}
+                                />
                             </pre>
                         </div>
                     ) : (
                         <div
                             className={cn(
                                 'relative transition-all duration-300 ease-in-out',
-                                device === 'desktop' && 'h-full w-full max-w-full',
+                                device === 'desktop' &&
+                                    'h-full w-full max-w-full',
                                 device === 'tablet' &&
                                     'h-[900px] max-h-full w-[768px] overflow-hidden rounded-[28px] border-[12px] border-neutral-950 bg-white shadow-2xl dark:border-neutral-800',
                                 device === 'mobile' &&
@@ -1999,61 +2100,71 @@ const PreviewPanel = (() => {
                                     'h-full w-full border-0 bg-transparent shadow-none',
                             )}
                         >
-                        {/* Mobile/Tablet Speaker and Camera Mockup */}
-                        {hasDesign && device !== 'desktop' && (
-                            <div className="absolute top-1.5 left-1/2 z-10 flex h-4 w-20 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-neutral-900/50 bg-neutral-950 dark:bg-neutral-800">
-                                <div className="h-1 w-8 rounded-full bg-neutral-800" />
-                                <div className="h-1.5 w-1.5 rounded-full border border-neutral-800 bg-neutral-900" />
-                            </div>
-                        )}
-
-                        <div
-                            className={cn(
-                                'relative h-full w-full',
-                                hasDesign &&
-                                    device !== 'desktop' &&
-                                    'overflow-hidden rounded-[16px]',
+                            {/* Mobile/Tablet Speaker and Camera Mockup */}
+                            {hasDesign && device !== 'desktop' && (
+                                <div className="absolute left-1/2 top-1.5 z-10 flex h-4 w-20 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-neutral-900/50 bg-neutral-950 dark:bg-neutral-800">
+                                    <div className="h-1 w-8 rounded-full bg-neutral-800" />
+                                    <div className="h-1.5 w-1.5 rounded-full border border-neutral-800 bg-neutral-900" />
+                                </div>
                             )}
-                        >
-                            {isGenerating && activeMode === 'generate' ? (
-                                <LivePreviewFrame
-                                    streamingHtml={streamingHtml}
-                                    device={device}
-                                />
-                            ) : hasDesign ? (
-                                <>
-                                    <PreviewFrame
-                                        ref={ref}
-                                        html={html}
-                                        editMode={editMode}
-                                        onSelect={onSelect}
+
+                            <div
+                                className={cn(
+                                    'relative h-full w-full',
+                                    hasDesign &&
+                                        device !== 'desktop' &&
+                                        'overflow-hidden rounded-[16px]',
+                                )}
+                            >
+                                {isGenerating && activeMode === 'generate' ? (
+                                    <LivePreviewFrame
+                                        streamingHtml={streamingHtml}
                                         device={device}
                                     />
-                                    {isGenerating && activeMode === 'refine' ? (
-                                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm transition-all duration-300">
-                                            <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-background/90 p-6 shadow-xl max-w-sm text-center">
-                                                <Loader2 className="size-8 animate-spin text-primary" />
-                                                <div>
-                                                    <p className="text-sm font-semibold">Memperbarui desain...</p>
-                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                        AI sedang menerapkan revisi Anda secara presisi. Mohon tunggu sebentar.
-                                                    </p>
-                                                </div>
-                                                <div className="mt-2 w-full bg-muted h-1 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className="bg-primary h-full transition-all duration-500" 
-                                                        style={{ width: `${(activeStep + 1) * 20}%` }}
-                                                    />
+                                ) : hasDesign ? (
+                                    <>
+                                        <PreviewFrame
+                                            ref={ref}
+                                            html={html}
+                                            editMode={editMode}
+                                            onSelect={onSelect}
+                                            device={device}
+                                        />
+                                        {isGenerating &&
+                                        activeMode === 'refine' ? (
+                                            <div className="bg-background/60 absolute inset-0 z-30 flex flex-col items-center justify-center backdrop-blur-sm transition-all duration-300">
+                                                <div className="border-border bg-background/90 flex max-w-sm flex-col items-center gap-3 rounded-2xl border p-6 text-center shadow-xl">
+                                                    <Loader2 className="text-primary size-8 animate-spin" />
+                                                    <div>
+                                                        <p className="text-sm font-semibold">
+                                                            Memperbarui
+                                                            desain...
+                                                        </p>
+                                                        <p className="text-muted-foreground mt-1 text-xs">
+                                                            AI sedang menerapkan
+                                                            revisi Anda secara
+                                                            presisi. Mohon
+                                                            tunggu sebentar.
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-muted mt-2 h-1 w-full overflow-hidden rounded-full">
+                                                        <div
+                                                            className="bg-primary h-full transition-all duration-500"
+                                                            style={{
+                                                                width: `${(activeStep + 1) * 20}%`,
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ) : null}
-                                </>
-                            ) : (
-                                <EmptyPreview isGenerating={isGenerating} />
-                            )}
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <EmptyPreview isGenerating={isGenerating} />
+                                )}
+                            </div>
                         </div>
-                    </div>)}
+                    )}
                 </div>
             </section>
         );
@@ -2097,9 +2208,9 @@ function LivePreviewFrame({
     return (
         <div
             className={cn(
-                'relative h-full overflow-hidden bg-white dark:bg-neutral-950 transition-all duration-300',
+                'relative h-full overflow-hidden bg-white transition-all duration-300 dark:bg-neutral-950',
                 device === 'desktop'
-                    ? 'rounded-xl border border-primary/30 shadow-sm ring-2 ring-primary/20'
+                    ? 'border-primary/30 ring-primary/20 rounded-xl border shadow-sm ring-2'
                     : '',
             )}
         >
@@ -2111,8 +2222,8 @@ function LivePreviewFrame({
             />
             {!streamingHtml ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin text-primary" />
+                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                        <Loader2 className="text-primary size-4 animate-spin" />
                         Menyiapkan kanvas...
                     </div>
                 </div>
@@ -2125,7 +2236,7 @@ function EmptyPreview({ isGenerating }: { isGenerating: boolean }) {
     return (
         <div className="flex h-full items-center justify-center">
             <div className="max-w-sm text-center">
-                <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <div className="bg-primary/10 text-primary mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl">
                     {isGenerating ? (
                         <Loader2 className="size-6 animate-spin" />
                     ) : (
@@ -2137,7 +2248,7 @@ function EmptyPreview({ isGenerating }: { isGenerating: boolean }) {
                         ? 'AI sedang membangun design...'
                         : 'Preview muncul di sini'}
                 </h2>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-sm">
                     {isGenerating
                         ? 'Ikuti langkahnya di panel kiri. Sebentar lagi selesai.'
                         : 'Tulis deskripsi design di panel kiri, lalu klik Generate. Hasilnya tampil langsung di sini.'}
@@ -2365,7 +2476,8 @@ const PreviewFrame = (() => {
                 }
 
                 if (data?.type === 'iframe-ready') {
-                    const isDark = document.documentElement.classList.contains('dark');
+                    const isDark =
+                        document.documentElement.classList.contains('dark');
                     iframeRef.current?.contentWindow?.postMessage(
                         { type: 'set-theme', value: isDark ? 'dark' : 'light' },
                         '*',
@@ -2384,9 +2496,13 @@ const PreviewFrame = (() => {
                     const isAnchor = data.href?.indexOf('#') === 0;
 
                     if (isAnchor && data.href !== '#' && data.href !== '#/') {
-                        toast.info(`Bagian "${data.href}" tidak ditemukan pada pratinjau ini.`);
+                        toast.info(
+                            `Bagian "${data.href}" tidak ditemukan pada pratinjau ini.`,
+                        );
                     } else {
-                        toast.info(`Halaman "${data.text || 'Menu'}" (${data.href || '#'}) belum dibuat (Simulasi).`);
+                        toast.info(
+                            `Halaman "${data.text || 'Menu'}" (${data.href || '#'}) belum dibuat (Simulasi).`,
+                        );
                     }
                 }
 
@@ -2409,7 +2525,8 @@ const PreviewFrame = (() => {
 
         useEffect(() => {
             const syncTheme = () => {
-                const isDark = document.documentElement.classList.contains('dark');
+                const isDark =
+                    document.documentElement.classList.contains('dark');
                 iframeRef.current?.contentWindow?.postMessage(
                     { type: 'set-theme', value: isDark ? 'dark' : 'light' },
                     '*',
@@ -2439,12 +2556,12 @@ const PreviewFrame = (() => {
         return (
             <div
                 className={cn(
-                    'h-full overflow-hidden bg-white dark:bg-neutral-950 transition',
+                    'h-full overflow-hidden bg-white transition dark:bg-neutral-950',
                     device === 'desktop'
                         ? cn(
                               'rounded-xl border shadow-sm',
                               editMode
-                                  ? 'border-primary/40 ring-2 ring-primary/20'
+                                  ? 'border-primary/40 ring-primary/20 ring-2'
                                   : 'border-border',
                           )
                         : 'rounded-none border-0 shadow-none ring-0',
@@ -2497,14 +2614,14 @@ function HistorySidebar({
 
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border bg-card transition-all duration-300 ease-in-out lg:static lg:z-auto',
+                    'border-border bg-card fixed inset-y-0 left-0 z-40 flex flex-col border-r transition-all duration-300 ease-in-out lg:static lg:z-auto',
                     open
                         ? 'w-72 translate-x-0'
                         : 'w-72 -translate-x-full lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-transparent',
                 )}
             >
                 <div className="flex h-full w-72 shrink-0 flex-col">
-                    <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
+                    <div className="border-border flex h-16 shrink-0 items-center justify-between border-b px-4">
                         <span className="text-sm font-semibold">
                             Riwayat design
                         </span>
@@ -2533,7 +2650,7 @@ function HistorySidebar({
 
                     <div className="flex-1 overflow-y-auto px-3 pb-4">
                         {history.length === 0 ? (
-                            <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+                            <p className="text-muted-foreground px-1 py-6 text-center text-xs">
                                 Belum ada design tersimpan.
                             </p>
                         ) : (
@@ -2553,13 +2670,13 @@ function HistorySidebar({
                                                     'w-full rounded-lg border px-3 py-2 pr-9 text-left transition',
                                                     isActive
                                                         ? 'border-primary/40 bg-primary/10'
-                                                        : 'border-transparent hover:bg-accent',
+                                                        : 'hover:bg-accent border-transparent',
                                                 )}
                                             >
                                                 <p className="truncate text-sm font-medium">
                                                     {item.title}
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-muted-foreground capitalize">
+                                                <p className="text-muted-foreground mt-0.5 text-xs capitalize">
                                                     {item.kind.replace(
                                                         '-',
                                                         ' ',
@@ -2572,7 +2689,7 @@ function HistorySidebar({
                                                 onClick={() =>
                                                     onDelete(item.id)
                                                 }
-                                                className="absolute top-2.5 right-2 rounded-md p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100"
+                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive absolute right-2 top-2.5 rounded-md p-1 opacity-0 transition focus-visible:opacity-100 group-hover:opacity-100"
                                             >
                                                 <Trash2 className="size-3.5" />
                                             </button>
@@ -2598,27 +2715,27 @@ function escapeHtml(text: string): string {
 function highlightTag(tag: string): string {
     const isCloseTag = tag.startsWith('</');
     const isDoctype = tag.toUpperCase().startsWith('<!DOCTYPE');
-    
+
     if (isDoctype) {
         return `<span class="text-sky-400 font-semibold">${escapeHtml(tag)}</span>`;
     }
-    
+
     if (isCloseTag) {
         const tagName = tag.substring(2, tag.length - 1);
 
         return `<span class="text-pink-500">&lt;/</span><span class="text-pink-500 font-semibold">${escapeHtml(tagName)}</span><span class="text-pink-500">&gt;</span>`;
     }
-    
+
     const match = tag.match(/^<([a-zA-Z0-9:-]+)([\s\S]*?)(\/?>)$/);
 
     if (!match) {
         return escapeHtml(tag);
     }
-    
+
     const tagName = match[1];
     const attributesPart = match[2];
     const closure = match[3];
-    
+
     const highlightedAttributes = attributesPart.replace(
         /([a-zA-Z0-9:-]+)(=(?:(["'])([\s\S]*?)\3|([^\s>]+)))?/g,
         (m, name, equalsAndValue, quote, quotedVal, unquotedVal) => {
@@ -2626,14 +2743,16 @@ function highlightTag(tag: string): string {
 
             if (equalsAndValue) {
                 res += '=';
-                const val = quote ? `${quote}${quotedVal}${quote}` : unquotedVal;
+                const val = quote
+                    ? `${quote}${quotedVal}${quote}`
+                    : unquotedVal;
                 res += `<span class="text-emerald-400">${escapeHtml(val)}</span>`;
             }
 
             return res;
-        }
+        },
     );
-    
+
     return `<span class="text-pink-500">&lt;</span><span class="text-pink-500 font-semibold">${tagName}</span>${highlightedAttributes}<span class="text-pink-500">${closure}</span>`;
 }
 
@@ -2641,16 +2760,18 @@ function highlightHtml(code: string): string {
     if (!code) {
         return '';
     }
-    
+
     const parts = code.split(/(<!--[\s\S]*?-->|<[^>]+>)/g);
-    
-    return parts.map(part => {
-        if (part.startsWith('<!--') && part.endsWith('-->')) {
-            return `<span class="text-neutral-500 italic">${escapeHtml(part)}</span>`;
-        } else if (part.startsWith('<') && part.endsWith('>')) {
-            return highlightTag(part);
-        } else {
-            return escapeHtml(part);
-        }
-    }).join('');
+
+    return parts
+        .map((part) => {
+            if (part.startsWith('<!--') && part.endsWith('-->')) {
+                return `<span class="text-neutral-500 italic">${escapeHtml(part)}</span>`;
+            } else if (part.startsWith('<') && part.endsWith('>')) {
+                return highlightTag(part);
+            } else {
+                return escapeHtml(part);
+            }
+        })
+        .join('');
 }

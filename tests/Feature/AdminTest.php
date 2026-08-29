@@ -209,3 +209,56 @@ test('user role and quota cannot be mass assigned', function () {
     expect($user->role)->toBe('user');
     expect($user->token_quota)->toBe(100000);
 });
+
+test('an admin cannot strip their own admin access', function () {
+    // There is no way back into the panel from the UI once the last admin
+    // demotes or suspends themselves.
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)
+        ->put(route('admin.users.update', $admin), [
+            'role' => 'user',
+            'token_quota' => 100000,
+            'status' => 'active',
+        ])
+        ->assertSessionHasErrors('role');
+
+    expect($admin->fresh()->isAdmin())->toBeTrue();
+});
+
+test('an admin cannot suspend their own account', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)
+        ->put(route('admin.users.update', $admin), [
+            'role' => 'admin',
+            'token_quota' => 100000,
+            'status' => 'blocked',
+        ])
+        ->assertSessionHasErrors('role');
+
+    expect($admin->fresh()->status)->toBe('active');
+});
+
+test('the dashboard totals each account token usage', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'user']);
+
+    foreach ([120, 80] as $tokens) {
+        AiUsageLog::create([
+            'user_id' => $user->id,
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'generate',
+            'total_tokens' => $tokens,
+        ]);
+    }
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->where(
+                'users',
+                fn ($users) => collect($users)->firstWhere('id', $user->id)['used_tokens'] === 200,
+            ),
+        );
+});

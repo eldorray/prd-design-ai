@@ -30,12 +30,12 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
 
     return (
-        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+        <div className="bg-background text-foreground flex min-h-screen flex-col font-sans antialiased">
             {/* Header */}
-            <header className="flex items-center justify-between border-b border-border px-6 py-4 md:px-16 lg:px-24">
+            <header className="border-border flex items-center justify-between border-b px-6 py-4 md:px-16 lg:px-24">
                 <Link
                     href={dashboard()}
-                    className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
                 >
                     <svg
                         className="h-4 w-4"
@@ -52,7 +52,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                     </svg>
                     <span>Kembali</span>
                 </Link>
-                <h2 className="text-sm font-medium text-foreground">
+                <h2 className="text-foreground text-sm font-medium">
                     Pengaturan
                 </h2>
                 <div className="w-16" />
@@ -70,7 +70,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                 className={cn(
                                     'rounded-lg px-3 py-2 text-sm transition-colors',
                                     isCurrentOrParentUrl(item.href)
-                                        ? 'bg-secondary font-medium text-foreground'
+                                        ? 'bg-secondary text-foreground font-medium'
                                         : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
                                 )}
                             >

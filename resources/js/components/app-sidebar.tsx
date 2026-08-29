@@ -1,5 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FileText, FolderGit2, LayoutTemplate, Settings, Shield } from 'lucide-react';
+import {
+    BookOpen,
+    FileText,
+    FolderGit2,
+    LayoutTemplate,
+    Settings,
+    Shield,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';

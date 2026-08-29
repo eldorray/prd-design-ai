@@ -63,8 +63,7 @@ const MODEL_LABELS: Record<string, string> = {
     'MiniMax-M3': 'MiniMax M3',
 };
 
-const modelLabel = (model: string): string =>
-    MODEL_LABELS[model] ?? model;
+const modelLabel = (model: string): string => MODEL_LABELS[model] ?? model;
 
 type ChatMessage = {
     id: string;
@@ -288,7 +287,10 @@ function hydrateMessages(messages: PrdMessage[]): ChatMessage[] {
  * otherwise crash on load.
  */
 function newId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
         return crypto.randomUUID();
     }
 
@@ -595,7 +597,10 @@ function PrdWorkspace({
 
     const submitAnswer = async () => {
         const trimmedAnswer = answer.trim();
-        const combinedAnswer = [...selectedExamples, ...(trimmedAnswer ? [trimmedAnswer] : [])].join(', ');
+        const combinedAnswer = [
+            ...selectedExamples,
+            ...(trimmedAnswer ? [trimmedAnswer] : []),
+        ].join(', ');
 
         if (!combinedAnswer || !activeQuestion) {
             return;
@@ -707,167 +712,174 @@ function PrdWorkspace({
         <>
             <Head title="Workspace" />
 
-            <div className="m3 m3-workspace flex min-h-screen flex-col bg-background text-foreground">
+            <div className="m3 m3-workspace bg-background text-foreground flex min-h-screen flex-col">
                 <a className="m3-skip-link" href="#workspace-content">
                     Lewati ke workspace
                 </a>
                 <div className="flex flex-1">
-                <HistorySidebar
-                    open={historyOpen}
-                    history={history}
-                    currentPrdId={currentPrdId}
-                    onClose={() => setHistoryOpen(false)}
-                    onNew={startNewPrd}
-                    onOpen={openPrd}
-                    onDelete={deletePrd}
-                />
+                    <HistorySidebar
+                        open={historyOpen}
+                        history={history}
+                        currentPrdId={currentPrdId}
+                        onClose={() => setHistoryOpen(false)}
+                        onNew={startNewPrd}
+                        onOpen={openPrd}
+                        onDelete={deletePrd}
+                    />
 
-                <Dialog
-                    open={pendingDeleteId !== null}
-                    onOpenChange={(open) => !open && setPendingDeleteId(null)}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Hapus PRD?</DialogTitle>
-                            <DialogDescription>
-                                Tindakan ini tidak bisa dibatalkan. PRD beserta
-                                seluruh isinya akan dihapus permanen.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setPendingDeleteId(null)}
-                            >
-                                Batal
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={confirmDelete}
-                            >
-                                Hapus
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <header className="m3-workspace-appbar sticky top-0 z-20 flex min-h-16 shrink-0 items-center">
-                        <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                        'transition-all',
-                                        historyOpen ? 'hidden' : 'flex',
-                                    )}
-                                    aria-label="Buka riwayat"
-                                    onClick={() => setHistoryOpen(true)}
-                                >
-                                    <PanelLeft className="size-4" />
-                                </Button>
-                                <div className="m3-product-mark flex size-10 items-center justify-center">
-                                    <FileText className="size-5" />
-                                </div>
-                                <div>
-                                    <h1 className="text-sm font-medium tracking-tight">
-                                        PRD Workspace
-                                    </h1>
-                                    <p className="text-xs text-[var(--m3-on-surface-var)]">
-                                        Rancang bersama AI, {user.name}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                {isSaving ? (
-                                    <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-                                        <Loader2 className="size-3 animate-spin" />
-                                        Menyimpan
-                                    </span>
-                                ) : null}
-                                <div className="hidden md:block">
-                                    <Stepper stage={stage} />
-                                </div>
-                                <UserMenu user={user} />
-                            </div>
-                        </div>
-                    </header>
-
-                    <main
-                        id="workspace-content"
-                        className={cn(
-                            'm3-workspace-canvas mx-auto w-full flex-1 px-4 py-6 md:px-8 md:py-10',
-                            stage === 'prd' ? 'max-w-5xl' : 'max-w-4xl',
-                        )}
+                    <Dialog
+                        open={pendingDeleteId !== null}
+                        onOpenChange={(open) =>
+                            !open && setPendingDeleteId(null)
+                        }
                     >
-                        <div className="mb-6 md:hidden">
-                            <Stepper stage={stage} />
-                        </div>
-                        {error ? (
-                            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                                {error}
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Hapus PRD?</DialogTitle>
+                                <DialogDescription>
+                                    Tindakan ini tidak bisa dibatalkan. PRD
+                                    beserta seluruh isinya akan dihapus
+                                    permanen.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setPendingDeleteId(null)}
+                                >
+                                    Batal
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={confirmDelete}
+                                >
+                                    Hapus
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <div className="flex min-w-0 flex-1 flex-col">
+                        <header className="m3-workspace-appbar sticky top-0 z-20 flex min-h-16 shrink-0 items-center">
+                            <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                            'transition-all',
+                                            historyOpen ? 'hidden' : 'flex',
+                                        )}
+                                        aria-label="Buka riwayat"
+                                        onClick={() => setHistoryOpen(true)}
+                                    >
+                                        <PanelLeft className="size-4" />
+                                    </Button>
+                                    <div className="m3-product-mark flex size-10 items-center justify-center">
+                                        <FileText className="size-5" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-sm font-medium tracking-tight">
+                                            PRD Workspace
+                                        </h1>
+                                        <p className="text-xs text-[var(--m3-on-surface-var)]">
+                                            Rancang bersama AI, {user.name}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    {isSaving ? (
+                                        <span className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
+                                            <Loader2 className="size-3 animate-spin" />
+                                            Menyimpan
+                                        </span>
+                                    ) : null}
+                                    <div className="hidden md:block">
+                                        <Stepper stage={stage} />
+                                    </div>
+                                    <UserMenu user={user} />
+                                </div>
                             </div>
-                        ) : null}
+                        </header>
 
-                        {stage === 'idea' ? (
-                            <IdeaStage
-                                idea={idea}
-                                model={model}
-                                models={aiModels}
-                                areModelsLoading={areModelsLoading}
-                                modelError={modelError}
-                                isLoading={isLoading}
-                                onIdeaChange={setIdea}
-                                onModelChange={setSelectedModel}
-                                onStart={startInterview}
-                            />
-                        ) : null}
+                        <main
+                            id="workspace-content"
+                            className={cn(
+                                'm3-workspace-canvas mx-auto w-full flex-1 px-4 py-6 md:px-8 md:py-10',
+                                stage === 'prd' ? 'max-w-5xl' : 'max-w-4xl',
+                            )}
+                        >
+                            <div className="mb-6 md:hidden">
+                                <Stepper stage={stage} />
+                            </div>
+                            {error ? (
+                                <div className="border-destructive/30 bg-destructive/10 text-destructive mb-6 rounded-lg border px-4 py-3 text-sm">
+                                    {error}
+                                </div>
+                            ) : null}
 
-                        {stage === 'interview' ? (
-                            <InterviewStage
-                                idea={idea}
-                                model={model}
-                                models={aiModels}
-                                areModelsLoading={areModelsLoading}
-                                modelError={modelError}
-                                answer={answer}
-                                selectedExamples={selectedExamples}
-                                messages={interviewMessages}
-                                activeQuestionId={activeQuestion?.id ?? null}
-                                isLoading={isLoading}
-                                answeredQuestions={answeredQuestions}
-                                canGenerate={canGenerate}
-                                hasPrd={Boolean(prd.trim())}
-                                transcriptEndRef={transcriptEndRef}
-                                onModelChange={setSelectedModel}
-                                onAnswerChange={setAnswer}
-                                onToggleExample={toggleExample}
-                                onSubmitAnswer={submitAnswer}
-                                onGenerate={generatePrd}
-                                onBackToPrd={() => setStage('prd')}
-                            />
-                        ) : null}
+                            {stage === 'idea' ? (
+                                <IdeaStage
+                                    idea={idea}
+                                    model={model}
+                                    models={aiModels}
+                                    areModelsLoading={areModelsLoading}
+                                    modelError={modelError}
+                                    isLoading={isLoading}
+                                    onIdeaChange={setIdea}
+                                    onModelChange={setSelectedModel}
+                                    onStart={startInterview}
+                                />
+                            ) : null}
 
-                        {stage === 'prd' ? (
-                            <PrdStage
-                                prd={prd}
-                                revision={revision}
-                                isLoading={isLoading}
-                                lastUsage={lastUsage}
-                                prdId={currentPrdId}
-                                onRevisionChange={setRevision}
-                                onRequestRevision={requestRevision}
-                                onRegenerate={generatePrd}
-                                onCopy={copyPrd}
-                                onExport={exportMarkdown}
-                                onBackToInterview={() => setStage('interview')}
-                            />
-                        ) : null}
-                    </main>
-                </div>
+                            {stage === 'interview' ? (
+                                <InterviewStage
+                                    idea={idea}
+                                    model={model}
+                                    models={aiModels}
+                                    areModelsLoading={areModelsLoading}
+                                    modelError={modelError}
+                                    answer={answer}
+                                    selectedExamples={selectedExamples}
+                                    messages={interviewMessages}
+                                    activeQuestionId={
+                                        activeQuestion?.id ?? null
+                                    }
+                                    isLoading={isLoading}
+                                    answeredQuestions={answeredQuestions}
+                                    canGenerate={canGenerate}
+                                    hasPrd={Boolean(prd.trim())}
+                                    transcriptEndRef={transcriptEndRef}
+                                    onModelChange={setSelectedModel}
+                                    onAnswerChange={setAnswer}
+                                    onToggleExample={toggleExample}
+                                    onSubmitAnswer={submitAnswer}
+                                    onGenerate={generatePrd}
+                                    onBackToPrd={() => setStage('prd')}
+                                />
+                            ) : null}
+
+                            {stage === 'prd' ? (
+                                <PrdStage
+                                    prd={prd}
+                                    revision={revision}
+                                    isLoading={isLoading}
+                                    lastUsage={lastUsage}
+                                    prdId={currentPrdId}
+                                    onRevisionChange={setRevision}
+                                    onRequestRevision={requestRevision}
+                                    onRegenerate={generatePrd}
+                                    onCopy={copyPrd}
+                                    onExport={exportMarkdown}
+                                    onBackToInterview={() =>
+                                        setStage('interview')
+                                    }
+                                />
+                            ) : null}
+                        </main>
+                    </div>
                 </div>
 
                 {/* Pixel-style FAB: start a new PRD from anywhere in the workspace */}
@@ -927,7 +939,9 @@ function HistorySidebar({
                     <div className="flex h-16 shrink-0 items-center justify-between px-4">
                         <div>
                             <span className="text-sm font-medium">Dokumen</span>
-                            <p className="text-xs text-muted-foreground">Riwayat PRD</p>
+                            <p className="text-muted-foreground text-xs">
+                                Riwayat PRD
+                            </p>
                         </div>
                         <Button
                             type="button"
@@ -953,7 +967,7 @@ function HistorySidebar({
 
                     <div className="flex-1 overflow-y-auto px-3 pb-4">
                         {history.length === 0 ? (
-                            <p className="px-1 py-6 text-center text-xs text-muted-foreground">
+                            <p className="text-muted-foreground px-1 py-6 text-center text-xs">
                                 Belum ada PRD tersimpan. Buat yang pertama.
                             </p>
                         ) : (
@@ -971,15 +985,13 @@ function HistorySidebar({
                                                 onClick={() => onOpen(item.id)}
                                                 className={cn(
                                                     'm3-history-item min-h-14 w-full px-3 py-2 pr-11 text-left transition',
-                                                    isActive
-                                                        ? 'is-active'
-                                                        : '',
+                                                    isActive ? 'is-active' : '',
                                                 )}
                                             >
                                                 <p className="truncate text-sm font-medium">
                                                     {item.title}
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                <p className="text-muted-foreground mt-0.5 text-xs">
                                                     {formatTimestamp(
                                                         item.updated_at,
                                                     )}
@@ -991,7 +1003,7 @@ function HistorySidebar({
                                                 onClick={() =>
                                                     onDelete(item.id)
                                                 }
-                                                className="absolute top-1.5 right-1 flex size-11 items-center justify-center rounded-full text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100"
+                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive absolute right-1 top-1.5 flex size-11 items-center justify-center rounded-full opacity-0 transition focus-visible:opacity-100 group-hover:opacity-100"
                                             >
                                                 <Trash2 className="size-3.5" />
                                             </button>
@@ -1035,7 +1047,7 @@ function UserMenu({ user }: { user: User }) {
                     data-test="user-menu-button"
                 >
                     <UserInfo user={user} />
-                    <ChevronsUpDown className="size-4 text-muted-foreground" />
+                    <ChevronsUpDown className="text-muted-foreground size-4" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -1053,14 +1065,20 @@ function Stepper({ stage }: { stage: Stage }) {
     const currentIndex = STEPS.findIndex((step) => step.key === stage);
 
     return (
-        <ol className="m3-progress-path flex items-center" aria-label="Tahap pembuatan PRD">
+        <ol
+            className="m3-progress-path flex items-center"
+            aria-label="Tahap pembuatan PRD"
+        >
             {STEPS.map((step, index) => {
                 const isCurrent = index === currentIndex;
                 const isDone = index < currentIndex;
                 const StepIcon = step.icon;
 
                 return (
-                    <li key={step.key} className="flex min-w-0 flex-1 items-center last:flex-none">
+                    <li
+                        key={step.key}
+                        className="flex min-w-0 flex-1 items-center last:flex-none"
+                    >
                         <div
                             aria-current={isCurrent ? 'step' : undefined}
                             className={cn(
@@ -1070,12 +1088,21 @@ function Stepper({ stage }: { stage: Stage }) {
                             )}
                         >
                             <span className="m3-progress-icon flex size-6 items-center justify-center">
-                                {isDone ? <Check className="size-3.5" /> : <StepIcon className="size-3.5" />}
+                                {isDone ? (
+                                    <Check className="size-3.5" />
+                                ) : (
+                                    <StepIcon className="size-3.5" />
+                                )}
                             </span>
                             <span>{step.label}</span>
                         </div>
                         {index < STEPS.length - 1 ? (
-                            <span className={cn('m3-progress-connector mx-1 h-0.5 min-w-3 flex-1', isDone && 'is-done')} />
+                            <span
+                                className={cn(
+                                    'm3-progress-connector mx-1 h-0.5 min-w-3 flex-1',
+                                    isDone && 'is-done',
+                                )}
+                            />
                         ) : null}
                     </li>
                 );
@@ -1150,9 +1177,9 @@ function IdeaStage({
                     <h2 className="mt-1 text-3xl font-medium tracking-tight md:text-4xl">
                         Mulai dari ide produkmu
                     </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                        Ceritakan masalah yang ingin diselesaikan. Workspace akan
-                        mengajukan pertanyaan penting sebelum menyusun PRD.
+                    <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-6 md:text-base">
+                        Ceritakan masalah yang ingin diselesaikan. Workspace
+                        akan mengajukan pertanyaan penting sebelum menyusun PRD.
                     </p>
                 </div>
             </div>
@@ -1174,7 +1201,7 @@ function IdeaStage({
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">
+                        <span className="text-muted-foreground text-xs font-medium">
                             Model
                         </span>
                         <ModelSelect
@@ -1184,11 +1211,11 @@ function IdeaStage({
                         />
                     </div>
                     {areModelsLoading ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-2 text-xs">
                             Memuat model dari Base URL provider...
                         </p>
                     ) : modelError ? (
-                        <p className="mt-2 max-w-md text-xs text-destructive">
+                        <p className="text-destructive mt-2 max-w-md text-xs">
                             {modelError}
                         </p>
                     ) : null}
@@ -1226,13 +1253,10 @@ function IdeaStage({
                         body: 'Salin atau unduh sebagai Markdown.',
                     },
                 ].map((step) => (
-                    <li
-                        key={step.title}
-                        className="m3-process-item p-4"
-                    >
-                        <step.icon className="size-4 text-muted-foreground" />
+                    <li key={step.title} className="m3-process-item p-4">
+                        <step.icon className="text-muted-foreground size-4" />
                         <p className="mt-2 text-sm font-medium">{step.title}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                             {step.body}
                         </p>
                     </li>
@@ -1293,10 +1317,8 @@ function InterviewStage({
             <div className="m3-interview-summary p-5 md:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                        <p className="m3-stage-label">
-                            Ide produk
-                        </p>
-                        <p className="mt-1 line-clamp-2 text-sm text-foreground">
+                        <p className="m3-stage-label">Ide produk</p>
+                        <p className="text-foreground mt-1 line-clamp-2 text-sm">
                             {idea}
                         </p>
                     </div>
@@ -1307,17 +1329,17 @@ function InterviewStage({
                     />
                 </div>
                 {areModelsLoading ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-2 text-xs">
                         Memuat model dari Base URL provider...
                     </p>
                 ) : modelError ? (
-                    <p className="mt-2 text-xs text-destructive">
+                    <p className="text-destructive mt-2 text-xs">
                         {modelError}
                     </p>
                 ) : null}
 
                 <div className="mt-4">
-                    <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="text-muted-foreground mb-1.5 flex items-center justify-between text-xs">
                         <span>Progress wawancara</span>
                         <span>
                             {answeredQuestions} / {RECOMMENDED_ANSWERS} jawaban
@@ -1336,7 +1358,7 @@ function InterviewStage({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="mt-3 text-muted-foreground"
+                        className="text-muted-foreground mt-3"
                         onClick={onBackToPrd}
                     >
                         <ArrowLeft className="size-4" />
@@ -1390,8 +1412,8 @@ function InterviewStage({
                 })}
 
                 {isLoading ? (
-                    <div className="flex items-center gap-2 px-1 text-sm text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin text-primary" />
+                    <div className="text-muted-foreground flex items-center gap-2 px-1 text-sm">
+                        <Loader2 className="text-primary size-4 animate-spin" />
                         {MODEL_LABELS[model]} sedang menulis...
                     </div>
                 ) : null}
@@ -1401,7 +1423,7 @@ function InterviewStage({
 
             <div className="m3-interview-action sticky bottom-4 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                         {canGenerate
                             ? remaining > 0
                                 ? `Sudah cukup untuk membuat PRD. Tambah ${remaining} jawaban lagi untuk hasil lebih lengkap.`
@@ -1445,14 +1467,13 @@ function QuestionCard({
     onSubmit: () => void;
     canSubmit: boolean;
 }) {
-
     return (
         <div className="m3-question-container p-5 md:p-7">
             <div className="flex items-center gap-2 text-sm font-medium text-[var(--m3-on-primary-container)]">
                 <MessageCircle className="size-4" />
                 Pertanyaan berikutnya
             </div>
-            <p className="mt-3 text-xl leading-8 font-medium md:text-2xl">
+            <p className="mt-3 text-xl font-medium leading-8 md:text-2xl">
                 {question.question}
             </p>
 
@@ -1469,9 +1490,7 @@ function QuestionCard({
                                 aria-pressed={isSelected}
                                 className={cn(
                                     'm3-filter-chip min-h-11 border px-4 py-2 text-sm transition',
-                                    isSelected
-                                        ? 'is-selected'
-                                        : '',
+                                    isSelected ? 'is-selected' : '',
                                 )}
                             >
                                 {example}
@@ -1504,7 +1523,7 @@ function QuestionCard({
                     className="min-h-32 w-full resize-y p-4 text-sm leading-6"
                 />
                 <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                         ⌘/Ctrl + Enter untuk kirim
                     </span>
                     <Button
@@ -1601,7 +1620,7 @@ function PrdStage({
                 </div>
 
                 {lastUsage ? (
-                    <p className="mt-3 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-3 text-xs">
                         {lastUsage.toLocaleString()} token digunakan
                     </p>
                 ) : null}
@@ -1630,10 +1649,10 @@ function PrdStage({
 
             <div className="m3-revision-panel p-5 md:p-6">
                 <div className="flex items-center gap-2">
-                    <Pencil className="size-4 text-muted-foreground" />
+                    <Pencil className="text-muted-foreground size-4" />
                     <p className="text-sm font-medium">Minta revisi</p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-1 text-xs">
                     Jelaskan bagian yang ingin diubah, AI akan memperbarui PRD
                     tanpa menghilangkan isi penting.
                 </p>
@@ -1772,14 +1791,14 @@ function PrdTable({ rows }: { rows: string[][] }) {
     const [header, ...body] = rows;
 
     return (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="border-border overflow-x-auto rounded-lg border">
             <table className="w-full text-left text-sm">
                 <thead className="bg-muted/50">
                     <tr>
                         {header.map((cell, index) => (
                             <th
                                 key={index}
-                                className="px-3 py-2 font-medium whitespace-nowrap"
+                                className="whitespace-nowrap px-3 py-2 font-medium"
                             >
                                 {cleanPrdText(cell)}
                             </th>
@@ -1790,12 +1809,12 @@ function PrdTable({ rows }: { rows: string[][] }) {
                     {body.map((row, rowIndex) => (
                         <tr
                             key={rowIndex}
-                            className="border-t border-border/60"
+                            className="border-border/60 border-t"
                         >
                             {row.map((cell, cellIndex) => (
                                 <td
                                     key={cellIndex}
-                                    className="px-3 py-2 text-muted-foreground"
+                                    className="text-muted-foreground px-3 py-2"
                                 >
                                     {cleanPrdText(cell)}
                                 </td>
@@ -1814,9 +1833,9 @@ function PrdChecklist({ items }: { items: string[] }) {
             {items.map((item, index) => (
                 <li
                     key={index}
-                    className="flex items-start gap-2.5 text-sm leading-6 text-muted-foreground"
+                    className="text-muted-foreground flex items-start gap-2.5 text-sm leading-6"
                 >
-                    <span className="mt-1.5 size-3.5 shrink-0 rounded border border-border bg-background" />
+                    <span className="border-border bg-background mt-1.5 size-3.5 shrink-0 rounded border" />
                     <span>{cleanPrdText(item)}</span>
                 </li>
             ))}
@@ -1835,16 +1854,18 @@ function PrdDiagram({ code, index }: { code: string; index: number }) {
 
         if (succeeded) {
             setCopied(true);
-            toast.success('Kode diagram disalin. Tempel di mermaid.live untuk melihat visualnya.');
+            toast.success(
+                'Kode diagram disalin. Tempel di mermaid.live untuk melihat visualnya.',
+            );
 
             setTimeout(() => setCopied(false), 2000);
         }
     };
 
     return (
-        <div className="rounded-lg border border-border bg-muted/30">
-            <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
-                <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <div className="border-border bg-muted/30 rounded-lg border">
+            <div className="border-border/60 flex items-center justify-between border-b px-3 py-1.5">
+                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                     Diagram {index + 1} · Mermaid
                 </span>
                 <Button
@@ -1862,7 +1883,7 @@ function PrdDiagram({ code, index }: { code: string; index: number }) {
                     {copied ? 'Tersalin' : 'Salin'}
                 </Button>
             </div>
-            <pre className="overflow-x-auto p-3 text-xs leading-5 text-foreground">
+            <pre className="text-foreground overflow-x-auto p-3 text-xs leading-5">
                 <code>{code}</code>
             </pre>
         </div>
@@ -1907,8 +1928,14 @@ function PrdSectionContent({ items }: { items: PrdSectionItem[] }) {
                     const run: string[] = [];
                     let cursor = index;
 
-                    while (cursor < items.length && items[cursor].kind === 'line') {
-                        run.push((items[cursor] as { kind: 'line'; text: string }).text);
+                    while (
+                        cursor < items.length &&
+                        items[cursor].kind === 'line'
+                    ) {
+                        run.push(
+                            (items[cursor] as { kind: 'line'; text: string })
+                                .text,
+                        );
                         cursor += 1;
                     }
 
@@ -1972,8 +1999,8 @@ function PrdLine({ line }: { line: string }) {
 
     if (/^[-*]\s+/.test(line)) {
         return (
-            <div className="flex gap-2 text-sm leading-6 text-muted-foreground">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+            <div className="text-muted-foreground flex gap-2 text-sm leading-6">
+                <span className="bg-primary mt-2 size-1.5 shrink-0 rounded-full" />
                 <span>{cleanPrdText(line.replace(/^[-*]\s+/, ''))}</span>
             </div>
         );
@@ -1981,13 +2008,13 @@ function PrdLine({ line }: { line: string }) {
 
     if (/^\d+\.\s+/.test(line)) {
         return (
-            <p className="text-sm leading-6 text-muted-foreground">
+            <p className="text-muted-foreground text-sm leading-6">
                 {cleanPrdText(line.replace(/^\d+\.\s+/, ''))}
             </p>
         );
     }
 
     return (
-        <p className="text-sm leading-6 text-muted-foreground">{cleanLine}</p>
+        <p className="text-muted-foreground text-sm leading-6">{cleanLine}</p>
     );
 }
