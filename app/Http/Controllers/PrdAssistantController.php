@@ -9,6 +9,7 @@ use App\Support\AiQuota;
 use App\Support\AntiSlopPrompt;
 use App\Support\TokenUsage;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -98,18 +99,13 @@ class PrdAssistantController extends Controller
         }
 
         try {
-            $response = Http::withToken($apiKey)
-                ->acceptJson()
-                ->asJson()
-                ->connectTimeout(10)
-                ->timeout(110)
-                ->post(AiProvider::chatUrl($payload['model']), $requestBody);
+            $response = $this->callProvider($payload['model'], $apiKey, $requestBody);
         } catch (ConnectionException $exception) {
             report($exception);
             AiQuota::release($reservation);
 
             return response()->json([
-                'message' => 'Tidak bisa terhubung ke penyedia AI. Coba lagi sebentar.',
+                'message' => 'Koneksi ke penyedia AI terputus atau terlalu lama (timeout). Coba kirim ulang — jika berulang, pilih model lain di dropdown.',
             ], 502);
         } catch (Throwable $exception) {
             report($exception);
@@ -167,6 +163,42 @@ class PrdAssistantController extends Controller
             'model' => $response->json('model', $payload['model']),
             'usage' => $response->json('usage'),
         ]);
+    }
+
+    /**
+     * Call the provider with a single automatic retry on transient failures
+     * (connection errors and 5xx). A generate call can legitimately take up to
+     * 110 seconds; one retry absorbs flaky gateway hiccups without the user
+     * having to resend manually.
+     *
+     * @param  array<string, mixed>  $requestBody
+     */
+    private function callProvider(string $model, string $apiKey, array $requestBody): Response
+    {
+        $send = fn (): Response => Http::withToken($apiKey)
+            ->acceptJson()
+            ->asJson()
+            ->connectTimeout(10)
+            ->timeout(110)
+            ->post(AiProvider::chatUrl($model), $requestBody);
+
+        try {
+            $response = $send();
+        } catch (ConnectionException $exception) {
+            // One silent retry on connection-level failures (DNS blip, reset,
+            // timeout). If the retry also fails, the exception bubbles up.
+            report($exception);
+            $response = $send();
+        }
+
+        // Retry once on server-side provider errors too (502/503/504) —
+        // these are almost always transient gateway states.
+        if ($response->serverError()) {
+            usleep(500_000);
+            $response = $send();
+        }
+
+        return $response;
     }
 
     /**

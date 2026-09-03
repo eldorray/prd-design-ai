@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 test('authenticated users can send an interview message to deepseek', function () {
@@ -377,4 +378,104 @@ test('provider error bodies are not leaked to the client', function () {
         ])
         ->assertStatus(502)
         ->assertJsonMissing(['detail']);
+});
+
+test('a transient 502 is retried once and succeeds without user-visible error', function () {
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    $attempts = 0;
+
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        if ($attempts === 1) {
+            return Http::response('Bad Gateway', 502);
+        }
+
+        return Http::response([
+            'choices' => [['message' => ['content' => 'PERTANYAAN: Siapa target user?']]],
+        ]);
+    });
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'interview',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ide produk saya'],
+            ],
+        ])
+        ->assertOk()
+        ->assertJsonPath('message', 'PERTANYAAN: Siapa target user?');
+
+    expect($attempts)->toBe(2);
+});
+
+test('a persistent 502 surfaces a friendly error after the retry', function () {
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    $attempts = 0;
+
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        return Http::response('Bad Gateway', 502);
+    });
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'interview',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ide produk saya'],
+            ],
+        ])
+        ->assertStatus(502);
+
+    expect($attempts)->toBe(2);
+});
+
+test('a dropped connection is retried once before failing', function () {
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    $attempts = 0;
+
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        if ($attempts === 1) {
+            throw new ConnectionException('timed out');
+        }
+
+        return Http::response([
+            'choices' => [['message' => ['content' => 'PERTANYAAN: Siapa target user?']]],
+        ]);
+    });
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'interview',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ide produk saya'],
+            ],
+        ])
+        ->assertOk();
+
+    expect($attempts)->toBe(2);
 });

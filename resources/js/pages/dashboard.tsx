@@ -501,25 +501,53 @@ function PrdWorkspace({
         const requestMessages = [...messages, requestMessage];
         setMessages(displayMessages);
 
+        // Transient failures (provider timeout, dropped connection) get one
+        // silent automatic retry before the user ever sees an error.
+        const sendRequest = async (): Promise<Response> => {
+            const send = (): Promise<Response> =>
+                fetch(PrdAssistantController.url(), {
+                    method: PrdAssistantController.definition.methods[0],
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                    },
+                    body: JSON.stringify({
+                        model,
+                        mode,
+                        idea,
+                        draft: prd,
+                        messages: requestMessages.map(({ role, content }) => ({
+                            role,
+                            content,
+                        })),
+                    }),
+                });
+
+            let response: Response;
+
+            try {
+                response = await send();
+            } catch {
+                // Network-level failure (server restarting, tunnel down).
+                // Retry once before giving up.
+                response = await send();
+            }
+
+            if (response.status === 502 || response.status === 504) {
+                await new Promise((resolve) => setTimeout(resolve, 1500));
+                const retryResponse = await send();
+
+                if (retryResponse.ok || retryResponse.status !== response.status) {
+                    return retryResponse;
+                }
+            }
+
+            return response;
+        };
+
         try {
-            const response = await fetch(PrdAssistantController.url(), {
-                method: PrdAssistantController.definition.methods[0],
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
-                body: JSON.stringify({
-                    model,
-                    mode,
-                    idea,
-                    draft: prd,
-                    messages: requestMessages.map(({ role, content }) => ({
-                        role,
-                        content,
-                    })),
-                }),
-            });
+            const response = await sendRequest();
 
             // Error pages (500/502) come back as HTML — parse defensively so
             // the user sees the server's message, not a JSON syntax error.
@@ -534,8 +562,17 @@ function PrdWorkspace({
             }
 
             if (!response.ok) {
+                const statusFallbacks: Record<number, string> = {
+                    419: 'Sesi Anda sudah kedaluwarsa. Muat ulang halaman lalu kirim lagi.',
+                    429: 'Terlalu banyak permintaan dalam waktu singkat. Tunggu sekitar satu menit lalu coba lagi.',
+                    502: 'Server AI sedang tidak stabil. Permintaan Anda sudah dicoba ulang otomatis — coba kirim lagi.',
+                    503: 'Layanan AI belum siap (API key belum diatur atau provider sedang down). Hubungi admin.',
+                    504: 'Penyedia AI kehabisan waktu. Coba kirim lagi atau pilih model lain di dropdown.',
+                };
+
                 throw new Error(
                     (data as { message?: string } | null)?.message ??
+                        statusFallbacks[response.status] ??
                         'Assistant belum bisa merespons. Coba lagi.',
                 );
             }
