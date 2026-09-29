@@ -75,3 +75,18 @@ test('users are rate limited', function () {
 
     $response->assertTooManyRequests();
 });
+
+test('the login page hides password reset while mail goes to the log', function () {
+    // The reset form would report success while nothing was ever sent.
+    config(['mail.default' => 'log']);
+
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page->where('canResetPassword', false));
+});
+
+test('the login page offers password reset with a real mailer', function () {
+    config(['mail.default' => 'smtp']);
+
+    $this->get(route('login'))
+        ->assertInertia(fn ($page) => $page->where('canResetPassword', true));
+});

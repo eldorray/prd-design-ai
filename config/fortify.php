@@ -168,9 +168,7 @@ return [
         // Email verification stays off until the deployment has a real SMTP
         // mailer. Enabling it while MAIL_MAILER=log locks every new account
         // out behind a verification mail that is never delivered.
-        // Password reset mails go nowhere under MAIL_MAILER=log: the form would
-        // report success while nothing was sent. Offer it only with a mailer.
-        ...(env('MAIL_MAILER', 'log') === 'log' ? [] : [Features::resetPasswords()]),
+        Features::resetPasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,

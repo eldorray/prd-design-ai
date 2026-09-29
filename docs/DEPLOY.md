@@ -185,7 +185,7 @@ selama SMTP belum dipasang:
   mengaktifkannya tanpa mailer akan mengunci setiap akun baru di balik email
   verifikasi yang tidak pernah sampai.
 - Tautan "Forgot password" di halaman login **disembunyikan otomatis** selama
-  `MAIL_MAILER=log` (fitur `resetPasswords` hanya aktif dengan mailer sungguhan).
+  `MAIL_MAILER=log`.
   Reset password sementara dilakukan lewat konsol:
 
   ```bash

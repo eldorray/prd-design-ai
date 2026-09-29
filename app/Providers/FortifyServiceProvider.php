@@ -49,7 +49,10 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            // Under MAIL_MAILER=log the reset form reports success while nothing
+            // is ever sent, so the link stays hidden until a real mailer exists.
+            'canResetPassword' => Features::enabled(Features::resetPasswords())
+                && config('mail.default') !== 'log',
             'status' => $request->session()->get('status'),
         ]));
 
