@@ -14,7 +14,15 @@ export type ParsedAssistantQuestion = {
 
 export type PrdSectionItem =
     | { kind: 'line'; text: string }
-    | { kind: 'diagram'; code: string };
+    | {
+          kind: 'diagram';
+          /** Fence info string, e.g. "mermaid"; empty when none was given. */
+          language: string;
+          /** Body without the fence markers, indentation preserved. */
+          code: string;
+          /** False while the closing fence has not arrived (streaming). */
+          closed: boolean;
+      };
 
 type ParsedPrdSection = {
     title: string;
@@ -22,8 +30,22 @@ type ParsedPrdSection = {
     content: PrdSectionItem[];
 };
 
+const READY_MARKER = '[SIAP_GENERATE]';
+
 export function cleanAssistantText(content: string) {
-    return content.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+    return content
+        .replaceAll(READY_MARKER, '')
+        .replace(/\*\*/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
+ * The interview prompt ends with this marker once enough answers are in —
+ * the cue to offer PRD generation instead of another question.
+ */
+export function isReadyToGenerate(content: string) {
+    return content.includes(READY_MARKER);
 }
 
 export function parseAssistantQuestion(
@@ -75,6 +97,7 @@ function parseExampleOptions(rawExamples: string) {
         .split(/\||,/)
         .map((example) =>
             example
+                .trim()
                 .replace(/^atau\s+/i, '')
                 .replace(/[?.]+$/g, '')
                 .trim(),
@@ -87,8 +110,7 @@ export function parsePrdSections(content: string): ParsedPrdSection[] {
     const sections: ParsedPrdSection[] = [];
     const lines = content.split('\n');
     let currentSection: ParsedPrdSection | null = null;
-    let inFence = false;
-    let fenceBuffer: string[] = [];
+    let fence: { language: string; lines: string[] } | null = null;
 
     const ensureSection = () => {
         if (!currentSection) {
@@ -109,25 +131,28 @@ export function parsePrdSections(content: string): ParsedPrdSection[] {
         // including their content — instead of being dropped, so diagrams
         // survive into the section view at their original position.
         if (trimmedLine.startsWith('```')) {
-            if (!inFence) {
-                inFence = true;
-                fenceBuffer = [trimmedLine];
+            if (!fence) {
+                fence = {
+                    language: trimmedLine.slice(3).trim().toLowerCase(),
+                    lines: [],
+                };
 
                 return;
             }
 
-            inFence = false;
-            fenceBuffer.push(trimmedLine);
             ensureSection().content.push({
                 kind: 'diagram',
-                code: fenceBuffer.join('\n'),
+                language: fence.language,
+                code: fence.lines.join('\n'),
+                closed: true,
             });
+            fence = null;
 
             return;
         }
 
-        if (inFence) {
-            fenceBuffer.push(trimmedLine);
+        if (fence) {
+            fence.lines.push(line.trimEnd());
 
             return;
         }
@@ -152,6 +177,19 @@ export function parsePrdSections(content: string): ParsedPrdSection[] {
 
         ensureSection().content.push({ kind: 'line', text: trimmedLine });
     });
+
+    // A fence still open at the end (streaming, or output cut off at the
+    // token limit) is shown as an unfinished block instead of vanishing.
+    const openFence = fence as { language: string; lines: string[] } | null;
+
+    if (openFence) {
+        ensureSection().content.push({
+            kind: 'diagram',
+            language: openFence.language,
+            code: openFence.lines.join('\n'),
+            closed: false,
+        });
+    }
 
     return sections;
 }

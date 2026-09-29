@@ -6,6 +6,7 @@ import {
     deriveTitle,
     hydrateMessages,
     isPrdContent,
+    isReadyToGenerate,
     parseAssistantQuestion,
     parsePrdBlocks,
     parsePrdSections,
@@ -63,20 +64,19 @@ describe('parseAssistantQuestion', () => {
         ).toEqual(['1', '2', '3', '4', '5', '6']);
     });
 
-    it('only strips "atau" and trailing punctuation from unpadded options', () => {
-        // Options are cleaned before they are trimmed, so the space around
-        // each "|" keeps the "atau " prefix and trailing "?"/"." in place for
-        // every option except the last one.
+    it('strips "atau" and trailing punctuation from every option', () => {
+        // Options used to be cleaned before being trimmed, so the spaces
+        // around each "|" hid the prefix and punctuation from the cleanup.
         expect(
             parseAssistantQuestion(
                 'PERTANYAAN: Q? CONTOH: satu | atau dua | tiga. | empat? KENAPA: alasan',
             ).examples,
-        ).toEqual(['satu', 'atau dua', 'tiga.', 'empat']);
+        ).toEqual(['satu', 'dua', 'tiga', 'empat']);
     });
 
-    it('does not special-case the [SIAP_GENERATE] marker', () => {
+    it('hides the [SIAP_GENERATE] marker from the question text', () => {
         // The interview prompt asks the model to emit this marker once enough
-        // answers are in; the parser treats it as ordinary text.
+        // answers are in; it is a signal, not something to show the user.
         expect(
             parseAssistantQuestion(
                 '[SIAP_GENERATE]\nSudah cukup informasi. Mau saya buatkan PRD sekarang?',
@@ -84,14 +84,19 @@ describe('parseAssistantQuestion', () => {
         ).toEqual({
             question: 'Mau saya buatkan PRD sekarang?',
             examples: [],
-            note: '[SIAP_GENERATE] Sudah cukup informasi.',
+            note: 'Sudah cukup informasi.',
         });
 
         expect(
             parseAssistantQuestion(
                 '[SIAP_GENERATE] Sudah cukup, mau saya buatkan PRD sekarang?',
             ).question,
-        ).toBe('[SIAP_GENERATE] Sudah cukup, mau saya buatkan PRD sekarang?');
+        ).toBe('Sudah cukup, mau saya buatkan PRD sekarang?');
+    });
+
+    it('detects the ready-to-generate signal', () => {
+        expect(isReadyToGenerate('[SIAP_GENERATE] Sudah cukup.')).toBe(true);
+        expect(isReadyToGenerate('PERTANYAAN: Siapa target?')).toBe(false);
     });
 
     it('falls back to free-form parsing with inline (contoh: ...) options', () => {
@@ -101,7 +106,7 @@ describe('parseAssistantQuestion', () => {
             ),
         ).toEqual({
             question: 'Apa masalah utama yang ingin diselesaikan?',
-            examples: ['onboarding lambat', 'atau biaya tinggi'],
+            examples: ['onboarding lambat', 'biaya tinggi'],
             note: 'Ini membantu fokus MVP.',
         });
     });
@@ -165,12 +170,15 @@ describe('parsePrdSections', () => {
         ]);
     });
 
-    it('captures a fenced mermaid block as one diagram item in place', () => {
-        // The fence markers are kept and every line is trimmed.
+    it('captures a fenced block as one diagram item with its language, indentation intact', () => {
+        // Indentation matters to some diagram types (mindmap), so lines inside
+        // a fence are kept as written and the fence markers are dropped.
         expect(parsePrdSections(prd)[3].content).toEqual([
             {
                 kind: 'diagram',
-                code: '```mermaid\nerDiagram\nUSER ||--o{ ORDER : places\n```',
+                language: 'mermaid',
+                code: 'erDiagram\n    USER ||--o{ ORDER : places',
+                closed: true,
             },
             { kind: 'line', text: 'Setelah diagram.' },
         ]);
@@ -186,13 +194,27 @@ describe('parsePrdSections', () => {
         ]);
     });
 
-    it('drops everything after a fence that is never closed', () => {
+    it('keeps a fence that is never closed as an open diagram', () => {
+        // A streaming PRD, or one cut off at the token limit, ends inside a
+        // fence. Its content used to vanish; now it stays visible as an
+        // unfinished block.
         expect(
             parsePrdSections(
                 '## A\nsebelum\n```mermaid\ngraph TD\nA-->B\n## B\nsetelah',
             ),
         ).toEqual([
-            { title: 'A', content: [{ kind: 'line', text: 'sebelum' }] },
+            {
+                title: 'A',
+                content: [
+                    { kind: 'line', text: 'sebelum' },
+                    {
+                        kind: 'diagram',
+                        language: 'mermaid',
+                        code: 'graph TD\nA-->B\n## B\nsetelah',
+                        closed: false,
+                    },
+                ],
+            },
         ]);
     });
 });

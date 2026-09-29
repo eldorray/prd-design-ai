@@ -1,11 +1,22 @@
-import { ArrowLeft, Loader2, MessageCircle, Send, Wand2 } from 'lucide-react';
+import {
+    ArrowLeft,
+    Loader2,
+    MessageCircle,
+    Send,
+    Sparkles,
+    Wand2,
+} from 'lucide-react';
 
 import { ModelSelect } from '@/components/prd/model-select';
 import { Button } from '@/components/ui/button';
 import type { AiModelOption } from '@/hooks/use-ai-models';
 import { modelLabel } from '@/lib/models';
 import type { Model } from '@/lib/models';
-import { cleanAssistantText, parseAssistantQuestion } from '@/lib/prd-parser';
+import {
+    cleanAssistantText,
+    isReadyToGenerate,
+    parseAssistantQuestion,
+} from '@/lib/prd-parser';
 import type { ChatMessage, ParsedAssistantQuestion } from '@/lib/prd-parser';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +67,14 @@ export function InterviewStage({
 }) {
     const progress = Math.min(answeredQuestions / RECOMMENDED_ANSWERS, 1);
     const remaining = Math.max(RECOMMENDED_ANSWERS - answeredQuestions, 0);
+    // The model emits [SIAP_GENERATE] once it has heard enough.
+    const activeMessage = messages.find(
+        (message) => message.id === activeQuestionId,
+    );
+    const aiReady = activeMessage
+        ? isReadyToGenerate(activeMessage.content)
+        : false;
+    const generateEnabled = canGenerate || aiReady;
 
     return (
         <div className="space-y-6">
@@ -131,6 +150,7 @@ export function InterviewStage({
                                 question={parseAssistantQuestion(
                                     message.content,
                                 )}
+                                ready={aiReady}
                                 answer={answer}
                                 selectedExamples={selectedExamples}
                                 isLoading={isLoading}
@@ -169,15 +189,17 @@ export function InterviewStage({
             <div className="m3-interview-action sticky bottom-4 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-muted-foreground text-xs">
-                        {canGenerate
-                            ? remaining > 0
-                                ? `Sudah cukup untuk membuat PRD. Tambah ${remaining} jawaban lagi untuk hasil lebih lengkap.`
-                                : 'Wawancara lengkap. Saatnya membuat PRD.'
-                            : 'Jawab minimal 2 pertanyaan sebelum membuat PRD.'}
+                        {aiReady
+                            ? 'AI menilai informasinya sudah cukup. Buat PRD sekarang, atau tetap jawab untuk menambah detail.'
+                            : canGenerate
+                              ? remaining > 0
+                                  ? `Sudah cukup untuk membuat PRD. Tambah ${remaining} jawaban lagi untuk hasil lebih lengkap.`
+                                  : 'Wawancara lengkap. Saatnya membuat PRD.'
+                              : 'Jawab minimal 2 pertanyaan sebelum membuat PRD.'}
                     </p>
                     <Button
                         type="button"
-                        disabled={!canGenerate || isLoading}
+                        disabled={!generateEnabled || isLoading}
                         onClick={onGenerate}
                     >
                         {isLoading ? (
@@ -195,6 +217,7 @@ export function InterviewStage({
 
 function QuestionCard({
     question,
+    ready,
     answer,
     selectedExamples,
     isLoading,
@@ -204,6 +227,7 @@ function QuestionCard({
     canSubmit,
 }: {
     question: ParsedAssistantQuestion;
+    ready: boolean;
     answer: string;
     selectedExamples: string[];
     isLoading: boolean;
@@ -215,8 +239,12 @@ function QuestionCard({
     return (
         <div className="m3-question-container p-5 md:p-7">
             <div className="flex items-center gap-2 text-sm font-medium text-[var(--m3-on-primary-container)]">
-                <MessageCircle className="size-4" />
-                Pertanyaan berikutnya
+                {ready ? (
+                    <Sparkles className="size-4" />
+                ) : (
+                    <MessageCircle className="size-4" />
+                )}
+                {ready ? 'Informasi sudah cukup' : 'Pertanyaan berikutnya'}
             </div>
             <p className="mt-3 text-xl font-medium leading-8 md:text-2xl">
                 {question.question}

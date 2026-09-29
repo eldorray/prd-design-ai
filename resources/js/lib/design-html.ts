@@ -36,7 +36,9 @@ export function cleanHtml(rawHtml: string): string {
     // shows preamble text from a reasoning-style model.
     const doctypeIdx = cleaned.toLowerCase().indexOf('<!doctype');
 
-    if (doctypeIdx > 0) {
+    if (doctypeIdx >= 0) {
+        // Also taken at index 0: falling through to the `<html` cut dropped
+        // the DOCTYPE and put the preview in quirks mode.
         cleaned = cleaned.slice(doctypeIdx);
     } else {
         const htmlIdx = cleaned.toLowerCase().indexOf('<html');

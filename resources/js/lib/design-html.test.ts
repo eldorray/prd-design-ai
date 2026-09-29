@@ -92,14 +92,13 @@ describe('highlightHtml', () => {
 });
 
 describe('cleanHtml', () => {
-    it('strips a fenced ```html block (and currently drops a leading DOCTYPE)', () => {
-        // A DOCTYPE at index 0 is not treated as the document start, so the
-        // `<html` cut below it removes the DOCTYPE line.
+    it('strips a fenced ```html block and keeps a leading DOCTYPE', () => {
+        // Losing the DOCTYPE put the preview (and exports) in quirks mode.
         expect(
             cleanHtml(
                 '```html\n<!DOCTYPE html>\n<html><body>Hi</body></html>\n```',
             ),
-        ).toBe('<html><body>Hi</body></html>');
+        ).toBe('<!DOCTYPE html>\n<html><body>Hi</body></html>');
     });
 
     it('strips a fence without a language tag', () => {
