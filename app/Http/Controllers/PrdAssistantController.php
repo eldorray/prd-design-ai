@@ -42,20 +42,6 @@ class PrdAssistantController extends Controller
             ], 503);
         }
 
-        // Debit an estimate before the provider call so parallel requests
-        // cannot all clear the same balance. Settled with the real usage below.
-        $reservation = null;
-
-        if ($user) {
-            $reservation = AiQuota::reserve($user, $payload['model'], $payload['mode']);
-
-            if ($reservation === null) {
-                return response()->json([
-                    'message' => 'Kuota token AI Anda sudah habis. Silakan hubungi administrator.',
-                ], 403);
-            }
-        }
-
         $messages = collect($payload['messages'])
             ->take(-18)
             ->map(fn (array $message): array => [
@@ -81,6 +67,20 @@ class PrdAssistantController extends Controller
             ]);
         }
 
+        // Debit an estimate before the provider call so parallel requests
+        // cannot all clear the same balance. Settled with the real usage below.
+        $reservation = null;
+
+        if ($user) {
+            $reservation = AiQuota::reserve($user, $payload['model'], $payload['mode'], TokenUsage::estimate($messages));
+
+            if ($reservation === null) {
+                return response()->json([
+                    'message' => AiQuota::EXHAUSTED_MESSAGE,
+                ], 403);
+            }
+        }
+
         $requestBody = [
             'model' => $payload['model'],
             'messages' => $messages,
@@ -102,7 +102,12 @@ class PrdAssistantController extends Controller
             $response = $this->callProvider($payload['model'], $apiKey, $requestBody);
         } catch (ConnectionException $exception) {
             report($exception);
-            AiQuota::release($reservation);
+
+            // A timeout after the prompt went out was still billed upstream,
+            // so the reservation stands in for those tokens.
+            if (! AiProvider::requestReachedProvider($exception)) {
+                AiQuota::release($reservation);
+            }
 
             return response()->json([
                 'message' => 'Koneksi ke penyedia AI terputus atau terlalu lama (timeout). Coba kirim ulang — jika berulang, pilih model lain di dropdown.',
@@ -167,9 +172,9 @@ class PrdAssistantController extends Controller
 
     /**
      * Call the provider with a single automatic retry on transient failures
-     * (connection errors and 5xx). A generate call can legitimately take up to
-     * 110 seconds; one retry absorbs flaky gateway hiccups without the user
-     * having to resend manually.
+     * (connection errors and 5xx). This is the only retry layer — the browser
+     * no longer retries on top of it, which used to multiply one click into
+     * several paid generations.
      *
      * @param  array<string, mixed>  $requestBody
      */
@@ -185,8 +190,13 @@ class PrdAssistantController extends Controller
         try {
             $response = $send();
         } catch (ConnectionException $exception) {
-            // One silent retry on connection-level failures (DNS blip, reset,
-            // timeout). If the retry also fails, the exception bubbles up.
+            // One silent retry, but only when the prompt never left (DNS blip,
+            // refused connection). A read timeout means the provider is already
+            // generating; resending would pay for the same answer twice.
+            if (AiProvider::requestReachedProvider($exception)) {
+                throw $exception;
+            }
+
             report($exception);
             $response = $send();
         }

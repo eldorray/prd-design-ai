@@ -221,7 +221,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                             {analytics.total_tokens.toLocaleString('id-ID')}
                         </div>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                            Konsumsi total token AI
+                            Konsumsi total token AI sepanjang waktu
                         </p>
                     </CardContent>
                 </Card>
@@ -336,7 +336,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                                     <th className="px-6 py-4">Role</th>
                                     <th className="px-6 py-4">Status</th>
                                     <th className="px-6 py-4">
-                                        Token Digunakan
+                                        Token Bulan Ini
                                     </th>
                                     <th className="px-6 py-4 text-right">
                                         Aksi
@@ -562,7 +562,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="quota">
-                                    Kuota Batas Token AI
+                                    Kuota Token AI per Bulan
                                 </Label>
                                 <Input
                                     id="quota"

@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\User;
+use App\Support\AiQuota;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -478,4 +481,72 @@ test('a dropped connection is retried once before failing', function () {
         ->assertOk();
 
     expect($attempts)->toBe(2);
+});
+
+test('a read timeout after the request was sent is neither retried nor refunded', function () {
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    $attempts = 0;
+
+    // cURL reports the uploaded body size: a timeout with size_upload > 0 means
+    // the provider received the prompt and is already generating (and billing).
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        throw new ConnectionException('Operation timed out', 0, new ConnectException(
+            'cURL error 28: Operation timed out after 110000 milliseconds',
+            new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions'),
+            null,
+            ['errno' => 28, 'size_upload' => 2048],
+        ));
+    });
+
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    $this->actingAs($user)
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'generate',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ide produk saya'],
+            ],
+        ])
+        ->assertStatus(502);
+
+    expect($attempts)->toBe(1)
+        ->and($user->aiUsageLogs()->count())->toBe(1)
+        ->and((int) $user->aiUsageLogs()->sum('total_tokens'))->toBeGreaterThanOrEqual(AiQuota::ESTIMATE);
+});
+
+test('a connection that never reached the provider is refunded', function () {
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    Http::fake(function () {
+        throw new ConnectionException('Could not resolve host', 0, new ConnectException(
+            'cURL error 6: Could not resolve host',
+            new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions'),
+            null,
+            ['errno' => 6, 'size_upload' => 0],
+        ));
+    });
+
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    $this->actingAs($user)
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'generate',
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ide produk saya'],
+            ],
+        ])
+        ->assertStatus(502);
+
+    expect($user->aiUsageLogs()->count())->toBe(0);
 });

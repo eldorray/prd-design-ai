@@ -3,6 +3,10 @@
 namespace App\Support;
 
 use App\Models\AiProvider as AiProviderModel;
+use GuzzleHttp\Exception\BadResponseException;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -316,6 +320,30 @@ class AiProvider
             // Table missing (pre-migration) — fall through to static config.
             return [];
         }
+    }
+
+    /**
+     * Whether a failed provider call got far enough to be billed: the prompt
+     * went out but no answer came back (read timeout, dropped reply). Such a
+     * call must be neither retried nor refunded — the provider may already be
+     * generating. A connection that never opened, or an error response, cost
+     * nothing.
+     */
+    public static function requestReachedProvider(Throwable $exception): bool
+    {
+        $cause = $exception instanceof ConnectionException ? $exception->getPrevious() : $exception;
+
+        if ($cause instanceof BadResponseException) {
+            return false;
+        }
+
+        // cURL reports how much of the body it uploaded before failing; the
+        // stream handler only raises ConnectException before anything is sent.
+        if ($cause instanceof ConnectException) {
+            return ($cause->getHandlerContext()['size_upload'] ?? 0) > 0;
+        }
+
+        return $cause instanceof GuzzleException;
     }
 
     /**

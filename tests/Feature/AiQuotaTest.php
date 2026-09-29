@@ -82,3 +82,63 @@ test('usage logs record when they happened', function () {
 
     expect($log->fresh()->created_at)->not->toBeNull();
 });
+
+test('the quota resets at the start of each month', function () {
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 1000]);
+
+    $this->travelTo(now()->subMonth());
+    $user->aiUsageLogs()->create(['model' => 'deepseek-v4-flash', 'mode' => 'generate', 'total_tokens' => 1000]);
+    $this->travelBack();
+
+    $user->aiUsageLogs()->create(['model' => 'deepseek-v4-flash', 'mode' => 'generate', 'total_tokens' => 300]);
+
+    expect($user->remainingQuota())->toBe(700);
+});
+
+test('a reservation holds the prompt size on top of the completion estimate', function () {
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    $reservation = AiQuota::reserve($user, 'deepseek-v4-flash', 'refine', 5000);
+
+    expect($reservation->total_tokens)->toBe(AiQuota::ESTIMATE + 5000);
+});
+
+test('a prompt larger than the remaining quota is refused', function () {
+    // Checking only "remaining > 0" let one token of balance pay for a 30k
+    // token refine of a large design.
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 10000]);
+
+    expect(AiQuota::reserve($user, 'deepseek-v4-flash', 'refine', 20000))->toBeNull();
+});
+
+test('the prd assistant refuses a prompt the remaining quota cannot cover', function () {
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 2000]);
+    $this->actingAs($user);
+
+    Http::fake();
+
+    $this->postJson(route('prd-assistant.messages'), [
+        'model' => 'deepseek-v4-flash',
+        'mode' => 'refine',
+        'draft' => str_repeat('Draft PRD panjang. ', 2000),
+        'messages' => [['role' => 'user', 'content' => 'Rapikan bagian fitur']],
+    ])->assertForbidden();
+
+    Http::assertNothingSent();
+});
+
+test('the design stream refuses a prompt the remaining quota cannot cover', function () {
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 2000]);
+
+    $this->actingAs($user)
+        ->postJson(route('design-assistant.stream'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'refine',
+            'kind' => 'landing-page',
+            'prompt' => 'Ubah warna tombol',
+            'current_html' => '<html><body>'.str_repeat('<div class="card">Konten</div>', 1000).'</body></html>',
+        ])
+        ->assertForbidden();
+
+    expect($user->aiUsageLogs()->count())->toBe(0);
+});

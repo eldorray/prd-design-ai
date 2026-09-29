@@ -3,6 +3,7 @@
 use App\Models\AiUsageLog;
 use App\Models\Prd;
 use App\Models\User;
+use App\Support\AiQuota;
 use Illuminate\Support\Facades\Http;
 
 test('guests are redirected from admin dashboard to login page', function () {
@@ -131,7 +132,7 @@ test('users with exhausted quota are blocked from generating PRD', function () {
     ]);
 
     $response->assertStatus(403);
-    $response->assertJsonPath('message', 'Kuota token AI Anda sudah habis. Silakan hubungi administrator.');
+    $response->assertJsonPath('message', AiQuota::EXHAUSTED_MESSAGE);
 });
 
 test('blocked users cannot use AI assistant', function () {
@@ -261,4 +262,40 @@ test('the dashboard totals each account token usage', function () {
                 fn ($users) => collect($users)->firstWhere('id', $user->id)['used_tokens'] === 200,
             ),
         );
+});
+
+test('the dashboard shows only this month usage against the monthly quota', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'user']);
+
+    $this->travelTo(now()->subMonth());
+    AiUsageLog::create(['user_id' => $user->id, 'model' => 'deepseek-v4-flash', 'mode' => 'generate', 'total_tokens' => 500]);
+    $this->travelBack();
+
+    AiUsageLog::create(['user_id' => $user->id, 'model' => 'deepseek-v4-flash', 'mode' => 'generate', 'total_tokens' => 40]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->where(
+                'users',
+                fn ($users) => collect($users)->firstWhere('id', $user->id)['used_tokens'] === 40,
+            )
+            ->where('analytics.total_tokens', 540),
+        );
+});
+
+test('deleting a user keeps their AI spend in the totals', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'user']);
+
+    AiUsageLog::create(['user_id' => $user->id, 'model' => 'deepseek-v4-flash', 'mode' => 'generate', 'total_tokens' => 900]);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $user))
+        ->assertRedirect();
+
+    expect(User::find($user->id))->toBeNull()
+        ->and((int) AiUsageLog::sum('total_tokens'))->toBe(900)
+        ->and(AiUsageLog::first()->user_id)->toBeNull();
 });

@@ -27,6 +27,8 @@ final class AiQuota
      */
     public const ESTIMATE = 8000;
 
+    public const EXHAUSTED_MESSAGE = 'Sisa kuota token AI Anda bulan ini tidak cukup untuk permintaan ini. Kuota direset setiap awal bulan, atau hubungi administrator.';
+
     /**
      * Seconds to hold the per-user lock. The critical section is one SUM plus
      * one INSERT, so this only ever guards against genuine parallel requests.
@@ -35,9 +37,11 @@ final class AiQuota
 
     /**
      * Debit an estimate up front and return the usage row to settle later.
-     * Returns null when the user is out of quota.
+     * Returns null when this month's balance cannot cover the prompt itself —
+     * checking only for a positive balance let one leftover token pay for a
+     * refine that sends tens of thousands.
      */
-    public static function reserve(User $user, string $model, string $mode): ?AiUsageLog
+    public static function reserve(User $user, string $model, string $mode, int $promptTokens = 0): ?AiUsageLog
     {
         // Admins are exempt from the balance check but still get a usage row,
         // so admin spend stays visible on the admin dashboard.
@@ -46,15 +50,15 @@ final class AiQuota
         // ponytail: a per-user cache lock is enough here; the reservation row
         // itself is what keeps parallel requests honest once it is written.
         return Cache::lock('ai-quota:'.$user->getKey(), self::LOCK_SECONDS)
-            ->block(5, function () use ($user, $model, $mode, $isAdmin): ?AiUsageLog {
-                if (! $isAdmin && $user->remainingQuota() <= 0) {
+            ->block(5, function () use ($user, $model, $mode, $isAdmin, $promptTokens): ?AiUsageLog {
+                if (! $isAdmin && $user->remainingQuota() <= $promptTokens) {
                     return null;
                 }
 
                 return $user->aiUsageLogs()->create([
                     'model' => $model,
                     'mode' => $mode,
-                    'total_tokens' => $isAdmin ? 0 : self::ESTIMATE,
+                    'total_tokens' => $isAdmin ? 0 : self::ESTIMATE + $promptTokens,
                 ]);
             });
     }

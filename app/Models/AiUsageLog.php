@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,6 +41,18 @@ class AiUsageLog extends Model
         return [
             'created_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Usage that counts against the quota: quotas are monthly and reset on the
+     * first day of each calendar month.
+     *
+     * @param  Builder<AiUsageLog>  $query
+     */
+    #[Scope]
+    protected function currentPeriod(Builder $query): void
+    {
+        $query->where('created_at', '>=', now()->startOfMonth());
     }
 
     /**

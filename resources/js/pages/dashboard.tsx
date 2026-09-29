@@ -501,53 +501,29 @@ function PrdWorkspace({
         const requestMessages = [...messages, requestMessage];
         setMessages(displayMessages);
 
-        // Transient failures (provider timeout, dropped connection) get one
-        // silent automatic retry before the user ever sees an error.
-        const sendRequest = async (): Promise<Response> => {
-            const send = (): Promise<Response> =>
-                fetch(PrdAssistantController.url(), {
-                    method: PrdAssistantController.definition.methods[0],
-                    headers: {
-                        Accept: 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken(),
-                    },
-                    body: JSON.stringify({
-                        model,
-                        mode,
-                        idea,
-                        draft: prd,
-                        messages: requestMessages.map(({ role, content }) => ({
-                            role,
-                            content,
-                        })),
-                    }),
-                });
-
-            let response: Response;
-
-            try {
-                response = await send();
-            } catch {
-                // Network-level failure (server restarting, tunnel down).
-                // Retry once before giving up.
-                response = await send();
-            }
-
-            if (response.status === 502 || response.status === 504) {
-                await new Promise((resolve) => setTimeout(resolve, 1500));
-                const retryResponse = await send();
-
-                if (retryResponse.ok || retryResponse.status !== response.status) {
-                    return retryResponse;
-                }
-            }
-
-            return response;
-        };
-
         try {
-            const response = await sendRequest();
+            // No retry here: the server already retries transient provider
+            // failures once. A browser retry on top of it — especially after a
+            // proxy 504 while the server is still generating — paid for the
+            // same answer several times over.
+            const response = await fetch(PrdAssistantController.url(), {
+                method: PrdAssistantController.definition.methods[0],
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({
+                    model,
+                    mode,
+                    idea,
+                    draft: prd,
+                    messages: requestMessages.map(({ role, content }) => ({
+                        role,
+                        content,
+                    })),
+                }),
+            });
 
             // Error pages (500/502) come back as HTML — parse defensively so
             // the user sees the server's message, not a JSON syntax error.
@@ -1451,7 +1427,7 @@ function InterviewStage({
                 {isLoading ? (
                     <div className="text-muted-foreground flex items-center gap-2 px-1 text-sm">
                         <Loader2 className="text-primary size-4 animate-spin" />
-                        {MODEL_LABELS[model]} sedang menulis...
+                        {modelLabel(model)} sedang menulis...
                     </div>
                 ) : null}
 

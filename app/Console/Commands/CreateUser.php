@@ -18,7 +18,7 @@ class CreateUser extends Command
         {email : Email address of the account}
         {--name= : Display name (defaults to the part before @)}
         {--role=user : user or admin}
-        {--quota=0 : AI token quota}
+        {--quota=0 : Monthly AI token quota}
         {--password= : Password; prompted for when omitted}';
 
     protected $description = 'Create a user, or reset the password and quota of an existing one';

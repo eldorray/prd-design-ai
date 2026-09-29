@@ -39,12 +39,17 @@ class DesignStreamController extends Controller
         // Debit an estimate before the stream opens. The studio fires one
         // request per selected canvas in parallel, and a balance check that
         // only wrote its usage at the end let every one of them through.
+        $promptTokens = TokenUsage::estimate([
+            ['content' => $payload['prompt']],
+            ['content' => $payload['current_html'] ?? ''],
+        ]);
+
         $reservation = $user
-            ? AiQuota::reserve($user, $payload['model'], $payload['mode'])
+            ? AiQuota::reserve($user, $payload['model'], $payload['mode'], $promptTokens)
             : null;
 
         if ($user && $reservation === null) {
-            abort(403, 'Kuota token AI Anda sudah habis. Silakan hubungi administrator.');
+            abort(403, AiQuota::EXHAUSTED_MESSAGE);
         }
 
         // Never pass the API key through method arguments: exception stack
@@ -55,8 +60,12 @@ class DesignStreamController extends Controller
             } catch (GuzzleException $exception) {
                 report($exception);
 
-                // The provider refused before streaming, so nothing was spent.
-                AiQuota::release($reservation);
+                // Refund only when nothing was generated: the connection never
+                // opened, or the provider refused. A prompt that went out and
+                // then stalled may already be burning tokens upstream.
+                if (! AiProvider::requestReachedProvider($exception)) {
+                    AiQuota::release($reservation);
+                }
 
                 // Gateway queue rejections arrive as HTTP 403/200 with an
                 // isQueued payload — translate them into a friendly message.
@@ -72,8 +81,10 @@ class DesignStreamController extends Controller
                     'message' => $friendly ?? 'Tidak bisa terhubung ke penyedia AI. Coba lagi sebentar.',
                 ]);
             } catch (Throwable $exception) {
+                // Mid-stream failures land here, after the provider started
+                // generating, so the reservation stands for the burned tokens.
+                // ponytail: a rare pre-send server bug is charged the estimate too.
                 report($exception);
-                AiQuota::release($reservation);
                 $this->send('error', ['message' => 'Generate design gagal diproses server.']);
             }
         });
@@ -104,13 +115,13 @@ class DesignStreamController extends Controller
             return;
         }
 
-        $client = new Client([
+        $client = app(Client::class, ['config' => [
             // Total timeout stays unlimited: long generations are fine. The
             // read timeout instead kills streams whose provider has stalled.
             'timeout' => 0,
             'connect_timeout' => 10,
             'read_timeout' => 90,
-        ]);
+        ]]);
 
         $body = $this->chatBody($payload, true);
         $body['stream_options'] = ['include_usage' => true];

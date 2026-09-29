@@ -41,11 +41,11 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
-     * Get the remaining token quota for the user.
+     * Get the token quota left for the current month.
      */
     public function remainingQuota(): int
     {
-        $used = $this->aiUsageLogs()->sum('total_tokens');
+        $used = $this->aiUsageLogs()->currentPeriod()->sum('total_tokens');
 
         return max(0, $this->token_quota - $used);
     }

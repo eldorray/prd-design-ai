@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -56,23 +57,38 @@ class Context7Service
     }
 
     /**
+     * Library docs for a fixed query, cached for a day. The query is never the
+     * user's prompt: prompts carry unreleased product ideas that do not belong
+     * in a third party's logs, and a fixed query is what makes caching work.
+     */
+    private function cachedContext(string $libraryId, string $query): ?string
+    {
+        return Cache::remember(
+            'context7:'.$libraryId,
+            now()->addDay(),
+            fn (): ?string => $this->fetchContext($query, $libraryId),
+        );
+    }
+
+    /**
      * Get relevant documentation context based on the user prompt.
      */
     public function getDocsForPrompt(string $prompt): string
     {
         $docs = [];
 
-        // Check if Tailwind is relevant
-        if (preg_match('/tailwind|css|design|style|color|layout|border/i', $prompt)) {
-            $tailwindDocs = $this->fetchContext($prompt, '/websites/tailwindcss');
+        // Only an explicit library mention earns a lookup. Generic words such
+        // as "design" or "layout" used to match nearly every prompt, adding
+        // blocking calls and thousands of prompt tokens to each generation.
+        if (preg_match('/\btailwind/i', $prompt)) {
+            $tailwindDocs = $this->cachedContext('/websites/tailwindcss', 'utility classes, responsive layout, dark mode');
             if ($tailwindDocs) {
                 $docs[] = "### Tailwind CSS Documentation Context:\n".$tailwindDocs;
             }
         }
 
-        // Check if React is relevant
-        if (preg_match('/react|state|hooks?|click|event|effect/i', $prompt)) {
-            $reactDocs = $this->fetchContext($prompt, '/facebook/react');
+        if (preg_match('/\breact\b/i', $prompt)) {
+            $reactDocs = $this->cachedContext('/facebook/react', 'components, state and effect hooks');
             if ($reactDocs) {
                 $docs[] = "### React 19 Documentation Context:\n".$reactDocs;
             }

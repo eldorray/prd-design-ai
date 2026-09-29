@@ -2,6 +2,15 @@
 
 use App\Models\Design;
 use App\Models\User;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\FnStream;
+use GuzzleHttp\Psr7\Request as GuzzleRequest;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Support\Facades\Schema;
 
 test('design studio shows the authenticated user history', function () {
@@ -307,4 +316,76 @@ test('export strips the legacy visual edit bridge from the document', function (
 
     expect($html)->not->toContain('data-design-edit-bridge');
     expect($html)->toContain('<h1>Hi</h1>');
+});
+
+/**
+ * Route the stream controller's Guzzle client through a mock handler.
+ *
+ * @param  list<mixed>  $queue
+ */
+function fakeDesignProvider(array $queue): void
+{
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    app()->bind(Client::class, fn ($app, array $parameters) => new Client(
+        ['handler' => HandlerStack::create(new MockHandler($queue))] + ($parameters['config'] ?? []),
+    ));
+}
+
+function streamDesign(User $user): string
+{
+    return test()->actingAs($user)
+        ->postJson(route('design-assistant.stream'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'generate',
+            'kind' => 'landing-page',
+            'prompt' => 'Landing page kopi',
+        ])
+        ->streamedContent();
+}
+
+test('a design stream that never reached the provider is refunded', function () {
+    $request = new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions');
+    fakeDesignProvider([new ConnectException('Connection refused', $request)]);
+
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    expect(streamDesign($user))->toContain('event: error')
+        ->and($user->aiUsageLogs()->count())->toBe(0);
+});
+
+test('a design request that stalls after being sent keeps its reservation', function () {
+    // The stream handler wraps a post-send timeout as a RequestException with
+    // no response — the provider already has the prompt and may be generating.
+    $request = new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions');
+    fakeDesignProvider([new RequestException('Read timed out', $request)]);
+
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    expect(streamDesign($user))->toContain('event: error')
+        ->and($user->aiUsageLogs()->count())->toBe(1);
+});
+
+test('a design stream that drops mid-flight keeps its reservation', function () {
+    $reads = 0;
+    $body = FnStream::decorate(Utils::streamFor(''), [
+        'eof' => fn (): bool => false,
+        'read' => function () use (&$reads): string {
+            if ($reads++ === 0) {
+                return 'data: '.json_encode(['choices' => [['delta' => ['content' => '<html>']]]])."\n\n";
+            }
+
+            throw new RuntimeException('Connection reset by peer');
+        },
+    ]);
+
+    fakeDesignProvider([new GuzzleResponse(200, ['Content-Type' => 'text/event-stream'], $body)]);
+
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
+
+    expect(streamDesign($user))->toContain('event: chunk')->toContain('event: error')
+        ->and($user->aiUsageLogs()->count())->toBe(1);
 });

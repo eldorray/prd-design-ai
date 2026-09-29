@@ -23,7 +23,8 @@ class AdminController extends Controller
         // every user at once, which is fine while registration is closed and
         // accounts are provisioned by hand; paginate if that ever changes.
         $users = User::query()
-            ->withSum('aiUsageLogs as used_tokens', 'total_tokens')
+            // This month's usage, matching what the monthly quota counts.
+            ->withSum(['aiUsageLogs as used_tokens' => fn ($query) => $query->currentPeriod()], 'total_tokens')
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'role', 'token_quota', 'status', 'created_at'])
             ->map(fn (User $user): array => [

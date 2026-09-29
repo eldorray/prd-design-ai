@@ -48,3 +48,39 @@ test('context7 service fails gracefully when api key is not set', function () {
     expect($result)->toBeNull();
     Http::assertNothingSent();
 });
+
+test('generic design words do not trigger a context7 lookup', function () {
+    // "design", "layout" and "color" appear in nearly every studio prompt, so
+    // matching on them added blocking lookups and prompt tokens to almost
+    // every generation.
+    config(['services.context7.api_key' => 'mocked-api-key']);
+
+    Http::fake();
+
+    $docs = (new Context7Service)->getDocsForPrompt('Design landing page dengan layout modern, color cerah, dan state yang interaktif');
+
+    expect($docs)->toBe('');
+    Http::assertNothingSent();
+});
+
+test('context7 lookups never send the user prompt to the third party', function () {
+    config(['services.context7.api_key' => 'mocked-api-key']);
+
+    Http::fake(['context7.com/api/*' => Http::response('Tailwind docs', 200)]);
+
+    (new Context7Service)->getDocsForPrompt('Landing page tailwind untuk proyek rahasia Nusantara Pay');
+
+    Http::assertSent(fn ($request) => ! str_contains(urldecode($request->url()), 'rahasia'));
+});
+
+test('context7 documentation is cached across generations', function () {
+    config(['services.context7.api_key' => 'mocked-api-key']);
+
+    Http::fake(['context7.com/api/*' => Http::response('Tailwind docs', 200)]);
+
+    $service = new Context7Service;
+    $service->getDocsForPrompt('Landing page pakai tailwind');
+    $service->getDocsForPrompt('Dashboard admin pakai tailwind');
+
+    Http::assertSentCount(1);
+});

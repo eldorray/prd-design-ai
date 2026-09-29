@@ -27,13 +27,24 @@ final class TokenUsage
             return $reported;
         }
 
-        $prompt = '';
+        return self::estimate($messages, $completion);
+    }
+
+    /**
+     * Character-based token estimate for messages (plus an optional completion).
+     * Also sizes a quota reservation before the provider is called.
+     *
+     * @param  array<int, array<string, mixed>>  $messages
+     */
+    public static function estimate(array $messages, string $completion = ''): int
+    {
+        $text = $completion;
 
         foreach ($messages as $message) {
-            $prompt .= ' '.self::text($message['content'] ?? '');
+            $text .= ' '.self::text($message['content'] ?? '');
         }
 
-        return (int) ceil((strlen($prompt) + strlen($completion)) / self::CHARS_PER_TOKEN);
+        return (int) ceil(strlen($text) / self::CHARS_PER_TOKEN);
     }
 
     /**
