@@ -465,14 +465,21 @@ export default function Dashboard({
                                     </tr>
                                 ) : (
                                     users.data.map((user) => {
-                                        const quotaPercent = Math.min(
-                                            100,
-                                            Math.round(
-                                                (user.used_tokens /
-                                                    user.token_quota) *
-                                                    100,
-                                            ),
-                                        );
+                                        // A zero quota divided by zero
+                                        // used to render "NaN%".
+                                        const quotaPercent =
+                                            user.token_quota > 0
+                                                ? Math.min(
+                                                      100,
+                                                      Math.round(
+                                                          (user.used_tokens /
+                                                              user.token_quota) *
+                                                              100,
+                                                      ),
+                                                  )
+                                                : user.used_tokens > 0
+                                                  ? 100
+                                                  : 0;
 
                                         return (
                                             <tr
