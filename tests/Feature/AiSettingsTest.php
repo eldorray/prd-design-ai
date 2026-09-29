@@ -180,10 +180,56 @@ test('prd generation injects active prd-scoped prompts', function () {
             fn (string $content): bool => str_contains($content, 'GUARDRAIL ANTI-SLOP UNTUK PRD'),
         );
 
-        return in_array('Selalu gunakan bahasa Indonesia formal.', $contents, true)
-            && ! in_array('Jangan pernah injeksi ke PRD.', $contents, true)
-            && is_string($corePrompt)
+        return is_string($corePrompt)
+            && str_contains($corePrompt, 'Selalu gunakan bahasa Indonesia formal.')
+            && ! str_contains(json_encode($request['messages']), 'Jangan pernah injeksi ke PRD.')
             && str_contains($corePrompt, 'Jangan mengarang fitur');
+    });
+});
+
+test('prd prompt injections follow the core prompt in creation order, like design', function () {
+    // PRD used to unshift each injection as its own system message, which
+    // reversed their order and put them ahead of the core instructions.
+    AiPrompt::create(['scope' => 'prd', 'label' => 'A', 'content' => 'INJEKSI_PERTAMA', 'is_active' => true]);
+    $this->travel(1)->minutes();
+    AiPrompt::create(['scope' => 'prd', 'label' => 'B', 'content' => 'INJEKSI_KEDUA', 'is_active' => true]);
+
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    Http::fake([
+        'https://api.deepseek.com/chat/completions' => Http::response([
+            'choices' => [['message' => ['content' => 'PERTANYAAN: Siapa target?']]],
+        ]),
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->postJson(route('prd-assistant.messages'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'interview',
+            'messages' => [['role' => 'user', 'content' => 'Ide: PRD generator.']],
+        ])
+        ->assertOk();
+
+    Http::assertSent(function ($request): bool {
+        $system = array_values(array_filter(
+            $request['messages'],
+            fn (array $message): bool => $message['role'] === 'system',
+        ));
+
+        if (count($system) !== 1) {
+            return false;
+        }
+
+        $content = $system[0]['content'];
+        $core = strpos($content, 'Kamu adalah product manager senior');
+        $first = strpos($content, 'INJEKSI_PERTAMA');
+        $second = strpos($content, 'INJEKSI_KEDUA');
+        $guardrail = strpos($content, 'GUARDRAIL ANTI-SLOP UNTUK PRD');
+
+        return $core === 0 && $core < $first && $first < $second && $second < $guardrail;
     });
 });
 

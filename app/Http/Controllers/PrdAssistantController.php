@@ -53,19 +53,19 @@ class PrdAssistantController extends Controller
 
         $answerCount = collect($messages)->where('role', 'user')->count();
 
+        $systemContent = $this->systemPrompt($payload['mode'], $payload['idea'] ?? null, $payload['draft'] ?? null, $answerCount);
+
+        // Admin-configured prompt injections, in creation order after the core
+        // prompt — the same shape the design studio uses.
+        foreach (AiPrompt::activeFor('prd') as $injection) {
+            $systemContent .= "\n\n".$injection['content'];
+        }
+
+        // Keep the non-negotiable guardrails after every other instruction.
         array_unshift($messages, [
             'role' => 'system',
-            'content' => $this->systemPrompt($payload['mode'], $payload['idea'] ?? null, $payload['draft'] ?? null, $answerCount)
-                ."\n\n".AntiSlopPrompt::forPrd(),
+            'content' => $systemContent."\n\n".AntiSlopPrompt::forPrd(),
         ]);
-
-        // Admin-configured prompt injections for the PRD scope.
-        foreach (AiPrompt::activeFor('prd') as $injection) {
-            array_unshift($messages, [
-                'role' => 'system',
-                'content' => $injection['content'],
-            ]);
-        }
 
         // Debit an estimate before the provider call so parallel requests
         // cannot all clear the same balance. Settled with the real usage below.
