@@ -1,6 +1,7 @@
 type StreamHandlers = {
-    onChunk: (fullHtml: string) => void;
-    onDone: (fullHtml: string) => void;
+    /** Called with everything received so far, not just the new delta. */
+    onChunk: (fullText: string) => void;
+    onDone: (fullText: string) => void;
     onError: (message: string) => void;
 };
 
@@ -9,47 +10,16 @@ type StreamRequest = {
     csrfToken: string;
     body: Record<string, unknown>;
     signal?: AbortSignal;
+    /** Shown when the server refuses without a message of its own. */
+    failureMessage?: string;
 };
 
 /**
- * Sanitize streamed HTML: strip leading reasoning / chatter some models
- * prepend (e.g. chain-of-thought or markdown code fences) so the canvas only
- * ever shows the actual HTML document.
+ * POST to one of the app's SSE endpoints (PRD or design) and parse its
+ * `chunk` / `done` / `error` frames. Accumulates the streamed text deltas and
+ * reports progress as it arrives; callers clean the text for their format.
  */
-function stripFences(html: string): string {
-    let result = html.trim();
-
-    if (result.startsWith('```')) {
-        result = result.replace(/^```[a-zA-Z]*\s*/, '');
-        result = result.replace(/\s*```$/, '');
-    }
-
-    // Some reasoning models spill <think>...</think> blocks before the HTML.
-    // Drop the entire block if present.
-    result = result.replace(/<think>[\s\S]*?<\/think>/gi, '');
-
-    // If anything still precedes <!doctype, hard-cut to the doctype.
-    const doctypeIdx = result.toLowerCase().indexOf('<!doctype');
-
-    if (doctypeIdx > 0) {
-        result = result.slice(doctypeIdx);
-    } else {
-        // Fallback: some models omit doctype; cut to first <html.
-        const htmlIdx = result.toLowerCase().indexOf('<html');
-
-        if (htmlIdx > 0) {
-            result = result.slice(htmlIdx);
-        }
-    }
-
-    return result.trim();
-}
-
-/**
- * POST to a Server-Sent Events endpoint and parse `event:`/`data:` frames.
- * Accumulates streamed HTML deltas and reports progress as it arrives.
- */
-export async function streamDesign(
+export async function streamSse(
     request: StreamRequest,
     handlers: StreamHandlers,
 ): Promise<void> {
@@ -65,7 +35,7 @@ export async function streamDesign(
     });
 
     if (!response.ok || !response.body) {
-        let message = 'Design belum bisa dibuat. Coba lagi.';
+        let message = request.failureMessage ?? 'Permintaan gagal. Coba lagi.';
 
         try {
             const data = await response.json();
@@ -85,7 +55,7 @@ export async function streamDesign(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    let fullHtml = '';
+    let fullText = '';
 
     const handleEvent = (rawEvent: string) => {
         const lines = rawEvent.split('\n');
@@ -120,13 +90,13 @@ export async function streamDesign(
             }
 
             if (typeof data.delta === 'string') {
-                fullHtml += data.delta;
-                handlers.onChunk(stripFences(fullHtml));
+                fullText += data.delta;
+                handlers.onChunk(fullText);
             }
         } else if (eventName === 'done') {
-            handlers.onDone(stripFences(fullHtml));
+            handlers.onDone(fullText);
         } else if (eventName === 'error') {
-            let message = 'Generate design gagal.';
+            let message = request.failureMessage ?? 'Permintaan gagal.';
 
             try {
                 message = (JSON.parse(dataText).message as string) ?? message;

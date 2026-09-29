@@ -20,3 +20,10 @@ export type Prd = {
     created_at: string;
     updated_at: string;
 };
+
+/** An earlier content of a PRD; the content itself loads on restore. */
+export type PrdVersionSummary = {
+    id: string;
+    created_at: string;
+    characters: number;
+};

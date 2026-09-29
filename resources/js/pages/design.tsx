@@ -25,7 +25,7 @@ import { useCanvases } from '@/hooks/use-canvases';
 import { exportDesign } from '@/lib/design-export';
 import { cleanHtml, deriveTitle } from '@/lib/design-html';
 import type { Model } from '@/lib/models';
-import { streamDesign } from '@/lib/stream-design';
+import { streamSse } from '@/lib/stream-sse';
 import { cn } from '@/lib/utils';
 import type {
     Auth,
@@ -456,10 +456,12 @@ function DesignWorkspace({
                         streamAbortRef.current = controller;
 
                         try {
-                            await streamDesign(
+                            await streamSse(
                                 {
                                     url: DesignStreamController.url(),
                                     csrfToken: csrfToken(),
+                                    failureMessage:
+                                        'Design belum bisa dibuat. Coba lagi.',
                                     body: {
                                         model,
                                         mode,

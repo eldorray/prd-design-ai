@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import PrdAssistantController from '@/actions/App/Http/Controllers/PrdAssistantController';
 import PrdController from '@/actions/App/Http/Controllers/PrdController';
+import PrdStreamController from '@/actions/App/Http/Controllers/PrdStreamController';
 import { HistorySidebar } from '@/components/prd/history-sidebar';
 import { IdeaStage } from '@/components/prd/idea-stage';
 import { InterviewStage } from '@/components/prd/interview-stage';
@@ -32,8 +33,9 @@ import {
     newId,
 } from '@/lib/prd-parser';
 import type { ChatMessage } from '@/lib/prd-parser';
+import { streamSse } from '@/lib/stream-sse';
 import { cn } from '@/lib/utils';
-import type { Auth, Prd, PrdSummary, User } from '@/types';
+import type { Auth, Prd, PrdSummary, PrdVersionSummary, User } from '@/types';
 
 type Mode = 'interview' | 'generate' | 'refine';
 
@@ -49,12 +51,14 @@ type PageProps = {
     auth: Auth;
     history: PrdSummary[];
     current: Prd | null;
+    versions: PrdVersionSummary[];
     aiModels?: string[];
     [key: string]: unknown;
 };
 
 export default function Dashboard() {
-    const { auth, history, current, aiModels } = usePage<PageProps>().props;
+    const { auth, history, current, versions, aiModels } =
+        usePage<PageProps>().props;
     const {
         models: availableModels,
         isLoading: areModelsLoading,
@@ -69,6 +73,7 @@ export default function Dashboard() {
             user={auth.user}
             history={history}
             current={current}
+            versions={versions ?? []}
             aiModels={availableModels}
             areModelsLoading={areModelsLoading}
             modelError={modelError}
@@ -80,6 +85,7 @@ function PrdWorkspace({
     user,
     history,
     current,
+    versions,
     aiModels,
     areModelsLoading,
     modelError,
@@ -87,6 +93,7 @@ function PrdWorkspace({
     user: User;
     history: PrdSummary[];
     current: Prd | null;
+    versions: PrdVersionSummary[];
     aiModels: AiModelOption[];
     areModelsLoading: boolean;
     modelError: string | null;
@@ -119,6 +126,9 @@ function PrdWorkspace({
     const [selectedExamples, setSelectedExamples] = useState<string[]>([]);
     const [revision, setRevision] = useState('');
     const [prd, setPrd] = useState(current?.content ?? '');
+    // The document as it streams in; null when no generation is running.
+    const [streamingPrd, setStreamingPrd] = useState<string | null>(null);
+    const streamAbortRef = useRef<AbortController | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>(() =>
         current ? hydrateMessages(current.messages ?? []) : [],
     );
@@ -162,6 +172,9 @@ function PrdWorkspace({
             transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [messages, isLoading, stage]);
+
+    // Leaving the workspace (another PRD, a new one) ends a running stream.
+    useEffect(() => () => streamAbortRef.current?.abort(), []);
 
     const csrfToken = () =>
         document
@@ -215,11 +228,11 @@ function PrdWorkspace({
                         preserveState: true,
                         preserveScroll: true,
                         replace: true,
-                        only: ['history', 'current'],
+                        only: ['history', 'current', 'versions'],
                     },
                 );
             } else {
-                router.reload({ only: ['history'] });
+                router.reload({ only: ['history', 'versions'] });
             }
         } catch {
             toast.error('PRD belum tersimpan. Perubahan masih ada di layar.');
@@ -257,6 +270,21 @@ function PrdWorkspace({
         const requestMessages = [...messages, requestMessage];
         setMessages(displayMessages);
 
+        const requestBody = {
+            model,
+            mode,
+            idea,
+            draft: prd,
+            messages: requestMessages.map(({ role, content }) => ({
+                role,
+                content,
+            })),
+        };
+
+        if (mode !== 'interview') {
+            return streamPrd(requestBody, displayMessages, previousMessages);
+        }
+
         try {
             // No retry here: the server already retries transient provider
             // failures once. A browser retry on top of it — especially after a
@@ -269,16 +297,7 @@ function PrdWorkspace({
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken(),
                 },
-                body: JSON.stringify({
-                    model,
-                    mode,
-                    idea,
-                    draft: prd,
-                    messages: requestMessages.map(({ role, content }) => ({
-                        role,
-                        content,
-                    })),
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             // Error pages (500/502) come back as HTML — parse defensively so
@@ -318,21 +337,14 @@ function PrdWorkspace({
             const finalMessages = [...displayMessages, assistantReply];
 
             setMessages(finalMessages);
-
-            const producesPrd = mode === 'generate' || mode === 'refine';
-            const nextContent = producesPrd ? assistantMessage : prd;
-
-            if (producesPrd) {
-                setPrd(assistantMessage);
-                setStage('prd');
-            }
-
             setLastUsage(
                 (data as AssistantResponse).usage?.total_tokens ?? null,
             );
 
-            if (producesPrd || currentPrdIdRef.current) {
-                await persistPrd(finalMessages, nextContent);
+            // Only interviews come through here (generate/refine stream), so
+            // an answer changes the transcript but never the document.
+            if (currentPrdIdRef.current) {
+                await persistPrd(finalMessages, prd);
             }
 
             return true;
@@ -353,6 +365,138 @@ function PrdWorkspace({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    /**
+     * Generate / refine over SSE so the document appears while it is written.
+     * The previous PRD stays in state until the new one has fully arrived.
+     */
+    const streamPrd = async (
+        requestBody: Record<string, unknown>,
+        displayMessages: ChatMessage[],
+        previousMessages: ChatMessage[],
+    ): Promise<boolean> => {
+        const controller = new AbortController();
+        streamAbortRef.current = controller;
+        const previousStage = stage;
+        let finalText = '';
+        let failure: string | null = null;
+
+        setStage('prd');
+        setStreamingPrd('');
+        setLastUsage(null);
+
+        try {
+            await streamSse(
+                {
+                    url: PrdStreamController.url(),
+                    csrfToken: csrfToken(),
+                    body: requestBody,
+                    signal: controller.signal,
+                    failureMessage: 'PRD belum bisa dibuat. Coba lagi.',
+                },
+                {
+                    onChunk: (fullText) => setStreamingPrd(fullText),
+                    onDone: (fullText) => {
+                        finalText = fullText.trim();
+                    },
+                    onError: (message) => {
+                        failure = message;
+                    },
+                },
+            );
+        } catch (caughtError) {
+            if (
+                caughtError instanceof DOMException &&
+                caughtError.name === 'AbortError'
+            ) {
+                return false;
+            }
+
+            failure = 'Koneksi ke server terputus saat menulis PRD. Coba lagi.';
+        } finally {
+            streamAbortRef.current = null;
+            setStreamingPrd(null);
+            setIsLoading(false);
+        }
+
+        if (failure !== null || !finalText) {
+            setMessages(previousMessages);
+            setStage(prd.trim() ? 'prd' : previousStage);
+            setError(failure ?? 'AI tidak mengembalikan PRD. Coba lagi.');
+
+            return false;
+        }
+
+        const finalMessages: ChatMessage[] = [
+            ...displayMessages,
+            { id: newId(), role: 'assistant', content: finalText },
+        ];
+
+        setMessages(finalMessages);
+        setPrd(finalText);
+        await persistPrd(finalMessages, finalText);
+
+        return true;
+    };
+
+    const restoreVersion = async (versionId: string) => {
+        if (!currentPrdId || isLoading) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                PrdController.restoreVersion.url({
+                    prd: currentPrdId,
+                    version: versionId,
+                }),
+                {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error('restore failed');
+            }
+
+            const data = (await response.json()) as { prd: Prd };
+
+            setPrd(data.prd.content ?? '');
+            router.reload({ only: ['history', 'versions'] });
+            toast.success('Versi sebelumnya dipulihkan.');
+        } catch {
+            toast.error('Versi gagal dipulihkan. Coba lagi.');
+        }
+    };
+
+    const printPrd = () => {
+        // Print in the light theme with the PRD title as the suggested file
+        // name, then put both back once the dialog closes.
+        const root = document.documentElement;
+        const wasDark = root.classList.contains('dark');
+        const previousTitle = document.title;
+
+        root.classList.remove('dark');
+        document.title = deriveTitle(prd, idea);
+
+        window.addEventListener(
+            'afterprint',
+            () => {
+                document.title = previousTitle;
+
+                if (wasDark) {
+                    root.classList.add('dark');
+                }
+            },
+            { once: true },
+        );
+
+        window.print();
     };
 
     const startInterview = async () => {
@@ -482,19 +626,24 @@ function PrdWorkspace({
             <Head title="Workspace" />
 
             <div className="m3 m3-workspace bg-background text-foreground flex min-h-screen flex-col">
-                <a className="m3-skip-link" href="#workspace-content">
+                <a
+                    className="m3-skip-link print:hidden"
+                    href="#workspace-content"
+                >
                     Lewati ke workspace
                 </a>
                 <div className="flex flex-1">
-                    <HistorySidebar
-                        open={historyOpen}
-                        history={history}
-                        currentPrdId={currentPrdId}
-                        onClose={() => setHistoryOpen(false)}
-                        onNew={startNewPrd}
-                        onOpen={openPrd}
-                        onDelete={deletePrd}
-                    />
+                    <div className="contents print:hidden">
+                        <HistorySidebar
+                            open={historyOpen}
+                            history={history}
+                            currentPrdId={currentPrdId}
+                            onClose={() => setHistoryOpen(false)}
+                            onNew={startNewPrd}
+                            onOpen={openPrd}
+                            onDelete={deletePrd}
+                        />
+                    </div>
 
                     <Dialog
                         open={pendingDeleteId !== null}
@@ -529,7 +678,7 @@ function PrdWorkspace({
                     </Dialog>
 
                     <div className="flex min-w-0 flex-1 flex-col">
-                        <header className="m3-workspace-appbar sticky top-0 z-20 flex min-h-16 shrink-0 items-center">
+                        <header className="m3-workspace-appbar sticky top-0 z-20 flex min-h-16 shrink-0 items-center print:hidden">
                             <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -584,11 +733,11 @@ function PrdWorkspace({
                                 stage === 'prd' ? 'max-w-5xl' : 'max-w-4xl',
                             )}
                         >
-                            <div className="mb-6 md:hidden">
+                            <div className="mb-6 md:hidden print:hidden">
                                 <Stepper stage={stage} />
                             </div>
                             {error ? (
-                                <div className="border-destructive/30 bg-destructive/10 text-destructive mb-6 rounded-lg border px-4 py-3 text-sm">
+                                <div className="border-destructive/30 bg-destructive/10 text-destructive mb-6 rounded-lg border px-4 py-3 text-sm print:hidden">
                                     {error}
                                 </div>
                             ) : null}
@@ -636,16 +785,20 @@ function PrdWorkspace({
 
                             {stage === 'prd' ? (
                                 <PrdStage
-                                    prd={prd}
+                                    prd={streamingPrd ?? prd}
+                                    isStreaming={streamingPrd !== null}
                                     revision={revision}
                                     isLoading={isLoading}
                                     lastUsage={lastUsage}
                                     prdId={currentPrdId}
+                                    versions={versions}
                                     onRevisionChange={setRevision}
                                     onRequestRevision={requestRevision}
                                     onRegenerate={generatePrd}
+                                    onRestoreVersion={restoreVersion}
                                     onCopy={copyPrd}
                                     onExport={exportMarkdown}
+                                    onPrint={printPrd}
                                     onBackToInterview={() =>
                                         setStage('interview')
                                     }
@@ -659,7 +812,7 @@ function PrdWorkspace({
                 {stage !== 'idea' ? (
                     <button
                         type="button"
-                        className="m3-fab"
+                        className="m3-fab print:hidden"
                         onClick={startNewPrd}
                         aria-label="Buat PRD baru"
                     >
