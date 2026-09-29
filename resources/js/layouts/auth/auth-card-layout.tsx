@@ -1,13 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
-import AppLogoIcon from '@/components/app-logo-icon';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import AppLogo from '@/components/app-logo';
 import { home } from '@/routes';
 
 export default function AuthCardLayout({
@@ -20,27 +13,25 @@ export default function AuthCardLayout({
     description?: string;
 }>) {
     return (
-        <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 text-foreground md:p-10">
             <div className="flex w-full max-w-md flex-col gap-6">
                 <Link
                     href={home()}
-                    className="flex items-center gap-2 self-center font-medium"
+                    className="flex items-center gap-1.5 self-center text-foreground"
                 >
-                    <div className="flex h-9 w-9 items-center justify-center">
-                        <AppLogoIcon className="size-9 fill-current text-black dark:text-white" />
-                    </div>
+                    <AppLogo />
                 </Link>
 
-                <div className="flex flex-col gap-6">
-                    <Card className="rounded-xl">
-                        <CardHeader className="px-10 pb-0 pt-8 text-center">
-                            <CardTitle className="text-xl">{title}</CardTitle>
-                            <CardDescription>{description}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="px-10 py-8">
-                            {children}
-                        </CardContent>
-                    </Card>
+                <div className="flex flex-col gap-8 rounded-xl border border-border bg-card px-10 py-8">
+                    <div className="flex flex-col gap-2 text-center">
+                        <h1 className="font-serif text-4xl leading-tight font-normal tracking-[-0.01em]">
+                            {title}
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    </div>
+                    <div>{children}</div>
                 </div>
             </div>
         </div>

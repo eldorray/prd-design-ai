@@ -116,6 +116,8 @@ trait StreamsFromProvider
         $buffer = '';
         $completion = '';
         $apiUsage = null;
+        // "length" means the provider's output limit cut the answer short.
+        $finishReason = null;
 
         while (! $stream->eof()) {
             $buffer .= $stream->read(1024);
@@ -133,7 +135,7 @@ trait StreamsFromProvider
 
                 if ($data === '[DONE]') {
                     AiQuota::settle($reservation, TokenUsage::total($apiUsage, $body['messages'], $completion));
-                    $this->send('done', []);
+                    $this->send('done', ['truncated' => $finishReason === 'length']);
 
                     return;
                 }
@@ -143,6 +145,7 @@ trait StreamsFromProvider
                     $apiUsage = $decoded['usage'];
                 }
 
+                $finishReason = Arr::get($decoded, 'choices.0.finish_reason') ?? $finishReason;
                 $delta = Arr::get($decoded, 'choices.0.delta.content');
 
                 if (is_string($delta) && $delta !== '') {
@@ -153,7 +156,7 @@ trait StreamsFromProvider
         }
 
         AiQuota::settle($reservation, TokenUsage::total($apiUsage, $body['messages'], $completion));
-        $this->send('done', []);
+        $this->send('done', ['truncated' => $finishReason === 'length']);
     }
 
     /**

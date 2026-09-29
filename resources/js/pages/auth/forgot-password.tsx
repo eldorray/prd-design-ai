@@ -15,7 +15,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
             <Head title="Forgot password" />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="mb-4 text-center text-sm font-medium text-lime-800 dark:text-lime-300">
                     {status}
                 </div>
             )}
@@ -25,7 +25,12 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label
+                                    htmlFor="email"
+                                    className="label-mono text-[11px] leading-[1.4] font-normal"
+                                >
+                                    Email address
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -54,7 +59,7 @@ export default function ForgotPassword({ status }: { status?: string }) {
                     )}
                 </Form>
 
-                <div className="text-muted-foreground space-x-1 text-center text-sm">
+                <div className="space-x-1 text-center text-sm text-muted-foreground">
                     <span>Or, return to</span>
                     <TextLink href={login()}>log in</TextLink>
                 </div>

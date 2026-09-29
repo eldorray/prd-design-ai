@@ -1,14 +1,18 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Layout, Loader2, PanelLeft, Plus } from 'lucide-react';
+import { History, Loader2, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import DesignController from '@/actions/App/Http/Controllers/DesignController';
 import DesignStreamController from '@/actions/App/Http/Controllers/DesignStreamController';
-import { HistorySidebar } from '@/components/design/history-sidebar';
+import {
+    HISTORY_DRAWER_ID,
+    HistorySidebar,
+} from '@/components/design/history-sidebar';
 import { PreviewPanel } from '@/components/design/preview-panel';
 import type { DesignPreviewHandle } from '@/components/design/preview-panel';
 import { PromptPanel } from '@/components/design/prompt-panel';
+import { StudioRail } from '@/components/design/studio-rail';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -26,7 +30,6 @@ import { exportDesign } from '@/lib/design-export';
 import { cleanHtml, deriveTitle } from '@/lib/design-html';
 import type { Model } from '@/lib/models';
 import { streamSse } from '@/lib/stream-sse';
-import { cn } from '@/lib/utils';
 import type {
     Auth,
     Design,
@@ -722,176 +725,203 @@ function DesignWorkspace({
         }
     };
 
+    const promptPanel = (
+        <PromptPanel
+            selectedKinds={selectedKinds}
+            onToggleKind={toggleKind}
+            model={model}
+            models={aiModels}
+            areModelsLoading={areModelsLoading}
+            modelError={modelError}
+            prompt={prompt}
+            initialPrompt={initialPrompt}
+            hasDesign={hasDesign}
+            isGenerating={isGenerating}
+            activeStep={activeStep}
+            error={error}
+            editMode={editMode}
+            selected={selected}
+            image={image}
+            fromPrd={fromPrd}
+            onModelChange={setSelectedModel}
+            onPromptChange={setPrompt}
+            onImageChange={setImage}
+            onGenerate={() => generate('generate')}
+            onRefine={() => generate('refine')}
+            onStop={stopGeneration}
+            onUpdateSelected={(patch) =>
+                previewRef.current?.updateSelected(patch)
+            }
+            onClearPrdContext={onClearPrdContext}
+            versions={versions}
+            currentVersionIndex={currentVersionIndex}
+            onSelectVersion={handleSelectVersion}
+        />
+    );
+
     return (
         <>
             <Head title="Design Studio" />
 
-            <div className="m3 bg-background text-foreground flex min-h-screen flex-col">
-                <div className="flex flex-1">
-                    <HistorySidebar
-                        history={history}
-                        currentId={currentId}
-                        open={historyOpen}
-                        onClose={() => setHistoryOpen(false)}
-                        onNew={startNew}
-                        onOpen={openDesign}
-                        onDelete={deleteDesign}
-                    />
+            {/* lg+: 64px rail · 360px prompt panel · canvas, locked to the
+                viewport. Below lg header, prompt and canvas stack and the page
+                scrolls. Grid (not flex) at every size: the canvas must be a
+                stretched grid item so the h-full preview frame resolves. */}
+            <div className="grid min-h-dvh grid-cols-1 grid-rows-[auto_auto_1fr] bg-background text-foreground lg:h-dvh lg:grid-cols-[64px_360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+                <StudioRail
+                    user={user}
+                    historyOpen={historyOpen}
+                    onToggleHistory={() => setHistoryOpen((open) => !open)}
+                />
 
-                    <Dialog
-                        open={pendingDeleteId !== null}
-                        onOpenChange={(open) =>
-                            !open && setPendingDeleteId(null)
-                        }
-                    >
-                        <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Hapus Design?</DialogTitle>
-                                <DialogDescription>
-                                    Tindakan ini tidak bisa dibatalkan. Design
-                                    beserta seluruh isinya akan dihapus
-                                    permanen.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setPendingDeleteId(null)}
-                                >
-                                    Batal
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDelete}
-                                >
-                                    Hapus
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-
-                    <div className="flex min-w-0 flex-1 flex-col">
-                        <header className="border-border/60 sticky top-0 z-20 flex h-16 shrink-0 items-center border-b bg-[var(--m3-surface-1)]">
-                            <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn(
-                                            'transition-all',
-                                            historyOpen ? 'hidden' : 'flex',
-                                        )}
-                                        aria-label="Buka riwayat"
-                                        onClick={() => setHistoryOpen(true)}
-                                    >
-                                        <PanelLeft className="size-4" />
-                                    </Button>
-                                    <div className="flex size-9 items-center justify-center rounded-full bg-[var(--m3-tertiary-container)] text-[var(--m3-on-tertiary-container)]">
-                                        <Layout className="size-4" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-sm font-medium tracking-tight">
-                                            Design Studio
-                                        </h1>
-                                        <p className="text-xs text-[var(--m3-on-surface-var)]">
-                                            Workspace {user.name}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    {isSaving ? (
-                                        <span className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
-                                            <Loader2 className="size-3 animate-spin" />
-                                            Menyimpan
-                                        </span>
-                                    ) : null}
-                                    <UserMenu user={user} />
-                                </div>
-                            </div>
-                        </header>
-
-                        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)]">
-                            <PromptPanel
-                                selectedKinds={selectedKinds}
-                                onToggleKind={toggleKind}
-                                model={model}
-                                models={aiModels}
-                                areModelsLoading={areModelsLoading}
-                                modelError={modelError}
-                                prompt={prompt}
-                                initialPrompt={initialPrompt}
-                                hasDesign={hasDesign}
-                                isGenerating={isGenerating}
-                                activeStep={activeStep}
-                                error={error}
-                                editMode={editMode}
-                                selected={selected}
-                                image={image}
-                                fromPrd={fromPrd}
-                                onModelChange={setSelectedModel}
-                                onPromptChange={setPrompt}
-                                onImageChange={setImage}
-                                onGenerate={() => generate('generate')}
-                                onRefine={() => generate('refine')}
-                                onStop={stopGeneration}
-                                onUpdateSelected={(patch) =>
-                                    previewRef.current?.updateSelected(patch)
-                                }
-                                onClearPrdContext={onClearPrdContext}
-                                versions={versions}
-                                currentVersionIndex={currentVersionIndex}
-                                onSelectVersion={handleSelectVersion}
-                            />
-
-                            <PreviewPanel
-                                ref={previewRef}
-                                html={html}
-                                streamingHtml={streamingHtml}
-                                selectedKinds={selectedKinds}
-                                activeKind={activeKind}
-                                onTabChange={setActiveKind}
-                                streaming={streaming}
-                                hasDesign={hasDesign}
-                                isGenerating={isGenerating}
-                                activeMode={activeMode}
-                                editMode={editMode}
-                                designId={currentId}
-                                viewMode={viewMode}
-                                copied={copied}
-                                onViewModeChange={(mode) => {
-                                    if (mode === 'code') {
-                                        handleShowCode();
-                                    } else {
-                                        setViewMode('preview');
-                                    }
-                                }}
-                                onToggleEdit={toggleEditMode}
-                                onDownloadHtml={downloadHtml}
-                                onSelect={setSelected}
-                                onSave={saveEdits}
-                                onCopyCode={copyToClipboard}
-                                onStop={stopGeneration}
-                            />
+                <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 md:px-6 lg:hidden">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0"
+                            aria-label="Buka riwayat"
+                            aria-expanded={historyOpen}
+                            aria-controls={HISTORY_DRAWER_ID}
+                            onClick={() => setHistoryOpen(true)}
+                        >
+                            <History className="size-5" strokeWidth={1.75} />
+                        </Button>
+                        <div className="flex min-w-0 flex-col gap-1">
+                            <h1 className="font-serif text-2xl leading-none whitespace-nowrap">
+                                Design Studio
+                            </h1>
+                            <p className="truncate label-mono">
+                                Workspace {user.name}
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                {/* Global workspace action: create a fresh design. Generate stays
-                    in the prompt panel because it depends on that local input. */}
-                {hasDesign || currentId ? (
-                    <button
-                        type="button"
-                        className="m3-fab"
-                        onClick={startNew}
-                        aria-label="Buat design baru"
-                    >
-                        <Plus className="size-5" />
-                        <span className="hidden sm:inline">Design baru</span>
-                    </button>
-                ) : null}
+                    <div className="flex shrink-0 items-center gap-2">
+                        {isSaving ? (
+                            <span className="hidden items-center gap-1.5 label-mono sm:flex">
+                                <Loader2 className="size-3 animate-spin" />
+                                Menyimpan
+                            </span>
+                        ) : null}
+                        {hasDesign || currentId ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-9 bg-card"
+                                onClick={startNew}
+                                aria-label="Buat design baru"
+                            >
+                                <Plus className="size-4" />
+                                <span className="hidden sm:inline">
+                                    Design baru
+                                </span>
+                            </Button>
+                        ) : null}
+                        {/* Phones only have room for the avatar. */}
+                        <UserMenu user={user} nameClassName="max-sm:hidden" />
+                    </div>
+                </header>
+
+                <section
+                    aria-label="Panel prompt"
+                    className="flex flex-col border-b border-border lg:min-h-0 lg:border-r lg:border-b-0"
+                >
+                    <div className="hidden h-[72px] shrink-0 items-center justify-between gap-4 border-b border-border px-6 lg:flex">
+                        <h1 className="shrink-0 font-serif text-[30px] leading-none whitespace-nowrap">
+                            Design Studio
+                        </h1>
+                        <span
+                            aria-live="polite"
+                            className="flex min-w-0 items-center gap-1.5 label-mono"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="size-3 shrink-0 animate-spin" />
+                                    Menyimpan
+                                </>
+                            ) : (
+                                <span className="truncate">
+                                    Workspace {user.name}
+                                </span>
+                            )}
+                        </span>
+                    </div>
+
+                    {promptPanel}
+                </section>
+
+                <PreviewPanel
+                    ref={previewRef}
+                    html={html}
+                    streamingHtml={streamingHtml}
+                    selectedKinds={selectedKinds}
+                    activeKind={activeKind}
+                    onTabChange={setActiveKind}
+                    streaming={streaming}
+                    hasDesign={hasDesign}
+                    isGenerating={isGenerating}
+                    activeMode={activeMode}
+                    editMode={editMode}
+                    designId={currentId}
+                    viewMode={viewMode}
+                    copied={copied}
+                    versions={versions}
+                    currentVersionIndex={currentVersionIndex}
+                    onSelectVersion={handleSelectVersion}
+                    onViewModeChange={(mode) => {
+                        if (mode === 'code') {
+                            handleShowCode();
+                        } else {
+                            setViewMode('preview');
+                        }
+                    }}
+                    onToggleEdit={toggleEditMode}
+                    onDownloadHtml={downloadHtml}
+                    onSelect={setSelected}
+                    onSave={saveEdits}
+                    onCopyCode={copyToClipboard}
+                    onStop={stopGeneration}
+                />
             </div>
+
+            <HistorySidebar
+                history={history}
+                currentId={currentId}
+                open={historyOpen}
+                onClose={() => setHistoryOpen(false)}
+                onNew={startNew}
+                onOpen={openDesign}
+                onDelete={deleteDesign}
+            />
+
+            <Dialog
+                open={pendingDeleteId !== null}
+                onOpenChange={(open) => !open && setPendingDeleteId(null)}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Hapus Design?</DialogTitle>
+                        <DialogDescription>
+                            Tindakan ini tidak bisa dibatalkan. Design beserta
+                            seluruh isinya akan dihapus permanen.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPendingDeleteId(null)}
+                        >
+                            Batal
+                        </Button>
+                        <Button variant="destructive" onClick={confirmDelete}>
+                            Hapus
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

@@ -5,6 +5,7 @@ namespace App\Concerns;
 use App\Models\AiPrompt;
 use App\Support\AiProvider;
 use App\Support\AntiSlopPrompt;
+use App\Support\PrdTemplate;
 
 /**
  * Prompt and request body for PRD interview / generate / refine calls,
@@ -32,7 +33,13 @@ trait BuildsPrdPrompt
 
         $answerCount = collect($messages)->where('role', 'user')->count();
 
-        $systemContent = $this->prdSystemPrompt($payload['mode'], $payload['idea'] ?? null, $payload['draft'] ?? null, $answerCount);
+        $systemContent = $this->prdSystemPrompt(
+            $payload['mode'],
+            $payload['idea'] ?? null,
+            $payload['draft'] ?? null,
+            $answerCount,
+            $payload['missing_sections'] ?? [],
+        );
 
         // Admin-configured prompt injections, in creation order after the core
         // prompt — the same shape the design studio uses.
@@ -59,7 +66,8 @@ trait BuildsPrdPrompt
         $requestBody = [
             'model' => $payload['model'],
             'messages' => $messages,
-            'temperature' => $payload['mode'] === 'generate' ? 0.35 : 0.55,
+            // Document output stays close to the spec; chat stays conversational.
+            'temperature' => in_array($payload['mode'], ['generate', 'complete'], true) ? 0.35 : 0.55,
             'stream' => $stream,
         ];
 
@@ -76,7 +84,40 @@ trait BuildsPrdPrompt
         return $requestBody;
     }
 
-    protected function prdSystemPrompt(string $mode, ?string $idea, ?string $draft, int $answerCount = 0): string
+    /**
+     * Format rules shared by a full generation and a partial completion, so a
+     * completed section looks like one generated with the rest.
+     */
+    protected function prdSectionRules(): string
+    {
+        return <<<'PROMPT'
+Aturan per section khusus:
+
+- Metrik Keberhasilan: metrik terukur (angka/target), bukan pernyataan umum.
+- Scope MVP: sebut fitur berdasarkan ID (F-01, F-02, ...). Semua fitur P0 wajib masuk Scope MVP.
+- Fitur Utama: tulis setiap fitur sebagai sub-section, urut dari prioritas tertinggi, dengan format persis seperti ini:
+  ### F-01 · Nama fitur (P0)
+  - **User story:** Sebagai <peran>, saya ingin <tindakan> agar <manfaat>.
+  - **Perilaku:** langkah utama yang dilakukan sistem, berurutan.
+  - **Aturan & validasi:** field wajib, format, batas nilai, perhitungan, dan aturan bisnis.
+  - **State & error:** kondisi kosong, loading, gagal, akses ditolak, dan edge case beserta pesan ke user.
+  - **Hak akses:** peran yang boleh memakai fitur ini.
+  - **Terkait:** halaman, endpoint API, dan entitas data yang dipakai, dengan nama persis seperti di section masing-masing.
+  Prioritas: P0 = wajib ada di MVP, P1 = penting tapi bisa menyusul, P2 = nanti. Detail yang belum dibahas di interview tetap diisi dengan asumsi yang wajar dan ditandai "(asumsi)" agar mudah divalidasi.
+- Struktur Data: daftar entitas dengan atribut utama dan tipe datanya (daftar per entitas, atribut dalam bullet).
+- Diagram ERD: diagram entitas-relasi dalam blok kode Mermaid, dibuka dengan ``` mermaid dan ditutup dengan ```. Gunakan sintaks erDiagram dengan relasi dan kardinalitas (||--o{, }o--||, dst). Entitas harus konsisten dengan section Struktur Data.
+- API Endpoints: tabel Markdown dengan kolom Method | Endpoint | Deskripsi | Auth.
+- Non-Functional Requirements: ringkas — performa, keamanan, skalabilitas, aksesibilitas.
+- Rekomendasi Tech Stack: frontend, backend, database, dan layanan pendukung, masing-masing satu baris alasan singkat.
+- Task Breakdown: pecah pekerjaan menjadi fase (Fase 1, Fase 2, ...) dengan checklist `- [ ]` per task, tiap task satu baris, sebut ID fitur terkait (mis. "[F-02]"), dan ada estimasi kasar (mis. "0.5 hari"). Fase pertama selalu fondasi (setup, autentikasi, skema database).
+- Acceptance Criteria: kelompokkan per fitur dengan heading ### AC F-01 · Nama fitur. Tiap kriteria satu baris checklist `- [ ]` berformat Given <kondisi> When <aksi> Then <hasil yang bisa diuji>. Setiap fitur di Fitur Utama wajib punya grup AC.
+PROMPT;
+    }
+
+    /**
+     * @param  list<string>  $missingSections  Sections to write in "complete" mode.
+     */
+    protected function prdSystemPrompt(string $mode, ?string $idea, ?string $draft, int $answerCount = 0, array $missingSections = []): string
     {
         $base = <<<'PROMPT'
 Kamu adalah product manager senior untuk AI PRD Generator. Jawab dalam bahasa Indonesia yang jelas, praktis, dan langsung bisa dipakai founder atau developer.
@@ -97,47 +138,22 @@ PROMPT;
             : '';
 
         return match ($mode) {
-            'generate' => $base.$context.$draftContext.<<<'PROMPT'
-
-Buat PRD lengkap dalam Markdown. Tulis hanya berdasarkan ide dan jawaban interview user — jangan mengarang fitur atau keputusan yang tidak dibahas; jika informasi kurang, catat di bagian Risiko dan Pertanyaan Terbuka. Batasi dokumen maksimal sekitar 2500 kata.
-
-Gunakan struktur lengkap ini (urutan wajib):
-
-# Nama Produk
-## Ringkasan
-## Masalah
-## Target User
-## Tujuan Produk
-## Metrik Keberhasilan
-## Scope MVP
-## Non-Scope MVP
-## Fitur Utama
-## Halaman dan Navigasi
-## User Flow
-## Struktur Data
-## Diagram ERD
-## API Endpoints
-## Non-Functional Requirements
-## Rekomendasi Tech Stack
-## Task Breakdown
-## Acceptance Criteria
-## Risiko dan Pertanyaan Terbuka
-
-Aturan per section khusus:
-
-- Metrik Keberhasilan: metrik terukur (angka/target), bukan pernyataan umum.
-- Struktur Data: daftar entitas dengan atribut utama dan tipe datanya (daftar per entitas, atribut dalam bullet).
-- Diagram ERD: diagram entitas-relasi dalam blok kode Mermaid, dibuka dengan ``` mermaid dan ditutup dengan ```. Gunakan sintaks erDiagram dengan relasi dan kardinalitas (||--o{, }o--||, dst). Entitas harus konsisten dengan section Struktur Data.
-- API Endpoints: tabel Markdown dengan kolom Method | Endpoint | Deskripsi | Auth.
-- Non-Functional Requirements: ringkas — performa, keamanan, skalabilitas, aksesibilitas.
-- Rekomendasi Tech Stack: frontend, backend, database, dan layanan pendukung, masing-masing satu baris alasan singkat.
-- Task Breakdown: pecah pekerjaan menjadi fase (Fase 1, Fase 2, ...) dengan checklist `- [ ]` per task, tiap task satu baris dan ada estimasi kasar (mis. "0.5 hari"). Fase pertama selalu fondasi (setup, autentikasi, skema database).
-
-Jangan menambahkan pembuka percakapan. Keluarkan dokumen PRD saja.
-PROMPT,
+            'generate' => $base.$context.$draftContext."\n\n"
+                .'Buat PRD lengkap dalam Markdown. Tulis hanya berdasarkan ide dan jawaban interview user — jangan mengarang fitur atau keputusan yang tidak dibahas; jika informasi kurang, catat di bagian Risiko dan Pertanyaan Terbuka. '
+                .'Batasi dokumen maksimal sekitar '.PrdTemplate::MAX_WORDS.' kata; utamakan kedalaman spesifikasi fitur P0 dibanding section lain.'
+                ."\n\nGunakan struktur lengkap ini (urutan wajib):\n\n# Nama Produk\n"
+                .collect(PrdTemplate::SECTIONS)->map(fn (string $section): string => "## {$section}")->implode("\n")
+                ."\n\n".$this->prdSectionRules()
+                ."\n\nJangan menambahkan pembuka percakapan. Keluarkan dokumen PRD saja.",
+            'complete' => $base.$context.$draftContext."\n\n"
+                .'Draft PRD di atas belum lengkap: ada section yang hilang atau terpotong. Tulis HANYA section berikut, masing-masing dibuka dengan heading persis seperti tertulis, dalam urutan ini:'
+                ."\n\n".collect($missingSections)->map(fn (string $section): string => "## {$section}")->implode("\n")
+                ."\n\nJaga konsistensi dengan isi draft: pakai nama fitur, ID fitur (F-01, ...), halaman, entitas, dan endpoint yang sudah ada. Jangan menulis ulang section lain dan jangan menambahkan judul dokumen."
+                ."\n\n".$this->prdSectionRules()
+                ."\n\nKeluarkan section tersebut saja, tanpa pembuka atau penutup percakapan.",
             'refine' => $base.$context.$draftContext.<<<'PROMPT'
 
-Perbaiki draft PRD berdasarkan pesan terbaru user. Pertahankan format Markdown, seluruh struktur section, tabel, dan diagram Mermaid yang sudah ada kecuali user meminta perubahan pada bagian tersebut. Rapikan detail yang kurang jelas, dan jangan hilangkan informasi penting. Keluarkan dokumen PRD saja, tanpa pembuka atau penutup percakapan.
+Perbaiki draft PRD berdasarkan pesan terbaru user. Pertahankan format Markdown, seluruh struktur section, format spesifikasi per fitur (### F-xx), tabel, dan diagram Mermaid yang sudah ada kecuali user meminta perubahan pada bagian tersebut. Rapikan detail yang kurang jelas, dan jangan hilangkan informasi penting. Keluarkan dokumen PRD saja, tanpa pembuka atau penutup percakapan.
 PROMPT,
             default => $base.$context.<<<PROMPT
 

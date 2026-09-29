@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
@@ -30,31 +31,21 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
 
     return (
-        <div className="bg-background text-foreground flex min-h-screen flex-col font-sans antialiased">
+        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
             {/* Header */}
-            <header className="border-border flex items-center justify-between border-b px-6 py-4 md:px-16 lg:px-24">
+            <header className="flex h-14 items-center justify-between border-b border-border px-6 md:px-16 lg:px-24">
                 <Link
                     href={dashboard()}
-                    className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
+                    className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                    <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                        />
-                    </svg>
+                    <ArrowLeft
+                        className="size-4"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                    />
                     <span>Kembali</span>
                 </Link>
-                <h2 className="text-foreground text-sm font-medium">
-                    Pengaturan
-                </h2>
+                <h2 className="label-mono">Pengaturan</h2>
                 <div className="w-16" />
             </header>
 
@@ -62,16 +53,19 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
             <main className="flex w-full flex-1 flex-col gap-10 px-6 py-10 md:flex-row md:px-16 lg:px-24">
                 {/* Sidebar */}
                 <aside className="w-full shrink-0 md:w-48">
-                    <nav className="flex flex-col gap-1" aria-label="Settings">
+                    <nav
+                        className="flex flex-col gap-0.5"
+                        aria-label="Settings"
+                    >
                         {sidebarNavItems.map((item, index) => (
                             <Link
                                 key={`${toUrl(item.href)}-${index}`}
                                 href={item.href}
                                 className={cn(
-                                    'rounded-lg px-3 py-2 text-sm transition-colors',
+                                    'flex h-10 items-center rounded-lg px-2.5 text-sm transition-colors',
                                     isCurrentOrParentUrl(item.href)
-                                        ? 'bg-secondary text-foreground font-medium'
-                                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                                        ? 'bg-secondary font-medium text-foreground'
+                                        : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
                                 )}
                             >
                                 {item.title}

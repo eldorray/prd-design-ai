@@ -9,6 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
+// Field labels follow the mono metadata style used across the paper skin.
+const FIELD_LABEL =
+    'font-mono text-[11px] font-normal tracking-[0.08em] text-muted-foreground uppercase';
+
 export default function WaitlistForm() {
     const [joined, setJoined] = useState(false);
     const form = useForm({ email: '', name: '', note: '' });
@@ -27,10 +31,11 @@ export default function WaitlistForm() {
 
     if (joined) {
         return (
-            <div className="border-border/70 bg-card/60 mx-auto flex max-w-md items-center gap-3 rounded-2xl border px-5 py-4 text-left text-sm">
-                <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
-                    <Check className="size-4" />
-                </div>
+            <div
+                role="status"
+                className="flex w-full max-w-md items-start gap-3 rounded-lg border border-border bg-card px-5 py-4 text-sm leading-relaxed"
+            >
+                <Check aria-hidden className="mt-0.5 size-4 shrink-0" />
                 Kamu sudah masuk daftar tunggu. Kami kabari lewat email saat
                 akunmu siap.
             </div>
@@ -38,12 +43,11 @@ export default function WaitlistForm() {
     }
 
     return (
-        <form
-            onSubmit={submit}
-            className="mx-auto grid w-full max-w-md gap-3 text-left"
-        >
-            <div className="grid gap-1.5">
-                <Label htmlFor="waitlist-email">Email</Label>
+        <form onSubmit={submit} className="grid w-full max-w-md gap-4">
+            <div className="grid gap-2">
+                <Label htmlFor="waitlist-email" className={FIELD_LABEL}>
+                    Email
+                </Label>
                 <Input
                     id="waitlist-email"
                     type="email"
@@ -51,22 +55,26 @@ export default function WaitlistForm() {
                     placeholder="kamu@email.com"
                     value={form.data.email}
                     onChange={(e) => form.setData('email', e.target.value)}
+                    className="h-11 bg-card"
                     required
                 />
                 <InputError message={form.errors.email} />
             </div>
-            <div className="grid gap-1.5">
-                <Label htmlFor="waitlist-name">Nama (opsional)</Label>
+            <div className="grid gap-2">
+                <Label htmlFor="waitlist-name" className={FIELD_LABEL}>
+                    Nama (opsional)
+                </Label>
                 <Input
                     id="waitlist-name"
                     autoComplete="name"
                     value={form.data.name}
                     onChange={(e) => form.setData('name', e.target.value)}
+                    className="h-11 bg-card"
                 />
                 <InputError message={form.errors.name} />
             </div>
-            <div className="grid gap-1.5">
-                <Label htmlFor="waitlist-note">
+            <div className="grid gap-2">
+                <Label htmlFor="waitlist-note" className={FIELD_LABEL}>
                     Produk apa yang ingin kamu buat? (opsional)
                 </Label>
                 <Textarea
@@ -75,6 +83,7 @@ export default function WaitlistForm() {
                     maxLength={1000}
                     value={form.data.note}
                     onChange={(e) => form.setData('note', e.target.value)}
+                    className="bg-card dark:bg-card"
                 />
                 <InputError message={form.errors.note} />
             </div>
@@ -82,10 +91,14 @@ export default function WaitlistForm() {
                 type="submit"
                 size="lg"
                 disabled={form.processing}
-                className="shadow-primary/25 group mt-1 rounded-full shadow-xl"
+                className="group mt-1 h-12 w-full gap-3 rounded-lg text-base"
             >
                 {form.processing ? 'Mengirim...' : 'Masuk daftar tunggu'}
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight
+                    aria-hidden
+                    strokeWidth={1.75}
+                    className="size-[18px] transition-transform group-hover:translate-x-0.5"
+                />
             </Button>
         </form>
     );

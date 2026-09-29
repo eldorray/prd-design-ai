@@ -2,30 +2,17 @@ import { Head, router, useForm } from '@inertiajs/react';
 import {
     ChevronLeft,
     ChevronRight,
-    Cpu,
     Edit2,
-    FileText,
-    Inbox,
-    LayoutTemplate,
     Search,
     Shield,
     Trash2,
     UserPlus,
-    Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import InputError from '@/components/input-error';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -43,6 +30,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useInitials } from '@/hooks/use-initials';
+import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
 
 type DashboardUser = {
@@ -100,6 +89,11 @@ type Props = {
     analytics: Analytics;
 };
 
+// label-mono sorts before the Label primitive's own text utilities, so the
+// conflicting ones are overridden explicitly.
+const fieldLabelClasses = 'label-mono text-[11px] leading-[1.4] font-normal';
+const dialogTitleClasses = 'font-serif text-[28px] leading-tight font-normal';
+
 export default function Dashboard({
     auth,
     users,
@@ -113,6 +107,7 @@ export default function Dashboard({
         filters.status,
     );
     const isFirstFilterRun = useRef(true);
+    const getInitials = useInitials();
 
     // Creating user state
     const [isCreating, setIsCreating] = useState(false);
@@ -282,472 +277,545 @@ export default function Dashboard({
         });
     };
 
+    const stats = [
+        {
+            label: 'Total Pengguna',
+            value: analytics.total_users,
+            caption: 'Pengguna terdaftar di platform',
+        },
+        {
+            label: 'Total Token AI',
+            value: analytics.total_tokens.toLocaleString('id-ID'),
+            caption: 'Konsumsi total token AI sepanjang waktu',
+        },
+        {
+            label: 'Dokumen PRD',
+            value: analytics.total_prds,
+            caption: 'Total PRD yang telah digenerate',
+        },
+        {
+            label: 'Design Mockups',
+            value: analytics.total_designs,
+            caption: 'Total design studio yang dibuat',
+        },
+    ];
+
+    // Ruled stat row: 2x2 on small screens, one row of four on large.
+    const statCellClasses = [
+        'border-r border-b pl-0 lg:border-b-0',
+        'border-b pl-4 sm:pl-6 lg:border-r lg:border-b-0',
+        'border-r pl-0 lg:pl-6',
+        'pl-4 sm:pl-6',
+    ];
+
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-7 px-6 py-8 md:px-12 md:py-9">
             <Head title="Admin Dashboard" />
 
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+            <header className="flex flex-col gap-2.5">
+                <span className="label-mono">Admin</span>
+                <h1 className="font-serif text-[44px] leading-none font-normal tracking-[-0.015em] md:text-[52px]">
                     Admin Dashboard
                 </h1>
-                <p className="text-neutral-500 dark:text-neutral-400">
+                <p className="text-[15px] text-muted-foreground">
                     Pantau statistik sistem dan kelola hak akses, kuota, serta
                     status pengguna.
                 </p>
-            </div>
+            </header>
 
-            {/* Statistics Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Pengguna
-                        </CardTitle>
-                        <Users className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-500">
-                            {analytics.total_users}
-                        </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                            Pengguna terdaftar di platform
+            {/* Statistics */}
+            <dl className="grid grid-cols-2 border-y border-t-foreground border-b-border lg:grid-cols-4">
+                {stats.map((stat, index) => (
+                    <div
+                        key={stat.label}
+                        className={cn(
+                            'flex min-w-0 flex-col gap-1.5 border-border py-[18px] pr-4 sm:pr-6',
+                            statCellClasses[index],
+                        )}
+                    >
+                        <dt className="label-mono">{stat.label}</dt>
+                        <dd className="truncate font-serif text-[40px] leading-none md:text-5xl">
+                            {stat.value}
+                        </dd>
+                        <dd className="text-[13px] text-muted-foreground">
+                            {stat.caption}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+
+            {/* User Management */}
+            <section
+                aria-labelledby="user-management-title"
+                className="overflow-hidden rounded-xl border border-border bg-card"
+            >
+                <div className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-center lg:justify-between lg:pl-6">
+                    <div className="min-w-0">
+                        <h2
+                            id="user-management-title"
+                            className="text-base font-semibold"
+                        >
+                            Manajemen Pengguna
+                        </h2>
+                        <p className="text-[13px] text-muted-foreground">
+                            Kelola data pengguna, perbarui batasan token,
+                            aktifkan/nonaktifkan akun, dan lainnya.
                         </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Token AI
-                        </CardTitle>
-                        <Cpu className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-500">
-                            {analytics.total_tokens.toLocaleString('id-ID')}
-                        </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                            Konsumsi total token AI sepanjang waktu
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Dokumen PRD
-                        </CardTitle>
-                        <FileText className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-500">
-                            {analytics.total_prds}
-                        </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                            Total PRD yang telah digenerate
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Design Mockups
-                        </CardTitle>
-                        <LayoutTemplate className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-neutral-900 dark:text-neutral-500">
-                            {analytics.total_designs}
-                        </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                            Total design studio yang dibuat
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* User Management Section */}
-            <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                <CardHeader>
-                    <CardTitle className="text-lg">
-                        Manajemen Pengguna
-                    </CardTitle>
-                    <CardDescription>
-                        Kelola data pengguna, perbarui batasan token,
-                        aktifkan/nonaktifkan akun, dan lainnya.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Search & Filters */}
-                    <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-                        <div className="relative max-w-sm flex-1">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-400" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
+                        <div className="relative w-full sm:w-[260px]">
+                            <Search
+                                className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground"
+                                strokeWidth={1.75}
+                                aria-hidden="true"
+                            />
                             <Input
+                                type="search"
+                                aria-label="Cari pengguna"
                                 placeholder="Cari nama atau email..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
+                                className="bg-background pl-9"
                             />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button onClick={() => openCreate()}>
-                                <UserPlus className="h-4 w-4" />
-                                Tambah Pengguna
-                            </Button>
-                            <Select
-                                value={roleFilter}
-                                onValueChange={(val) =>
-                                    setRoleFilter(val as RoleFilter)
-                                }
+                        <Select
+                            value={roleFilter}
+                            onValueChange={(val) =>
+                                setRoleFilter(val as RoleFilter)
+                            }
+                        >
+                            <SelectTrigger
+                                aria-label="Filter role"
+                                className="w-[140px] bg-background"
                             >
-                                <SelectTrigger className="w-[140px]">
-                                    <SelectValue placeholder="Semua Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        Semua Role
-                                    </SelectItem>
-                                    <SelectItem value="user">User</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                <SelectValue placeholder="Semua Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Semua Role</SelectItem>
+                                <SelectItem value="user">User</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                        </Select>
 
-                            <Select
-                                value={statusFilter}
-                                onValueChange={(val) =>
-                                    setStatusFilter(val as StatusFilter)
-                                }
+                        <Select
+                            value={statusFilter}
+                            onValueChange={(val) =>
+                                setStatusFilter(val as StatusFilter)
+                            }
+                        >
+                            <SelectTrigger
+                                aria-label="Filter status"
+                                className="w-[140px] bg-background"
                             >
-                                <SelectTrigger className="w-[140px]">
-                                    <SelectValue placeholder="Semua Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        Semua Status
-                                    </SelectItem>
-                                    <SelectItem value="active">
-                                        Aktif
-                                    </SelectItem>
-                                    <SelectItem value="blocked">
-                                        Ditangguhkan
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                                <SelectValue placeholder="Semua Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">
+                                    Semua Status
+                                </SelectItem>
+                                <SelectItem value="active">Aktif</SelectItem>
+                                <SelectItem value="blocked">
+                                    Ditangguhkan
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => openCreate()}>
+                            <UserPlus className="size-4" strokeWidth={1.75} />
+                            Tambah Pengguna
+                        </Button>
                     </div>
+                </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-                        <table className="w-full text-left text-sm text-neutral-700 dark:text-neutral-300">
-                            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
-                                <tr>
-                                    <th className="px-6 py-4">Nama & Email</th>
-                                    <th className="px-6 py-4">Role</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4">
-                                        Token Bulan Ini
-                                    </th>
-                                    <th className="px-6 py-4 text-right">
-                                        Aksi
-                                    </th>
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[780px] border-collapse text-left text-sm">
+                        <thead>
+                            <tr className="border-t border-border">
+                                <th
+                                    scope="col"
+                                    className="px-6 py-2.5 text-left label-mono"
+                                >
+                                    Nama & Email
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-4 py-2.5 text-left label-mono"
+                                >
+                                    Role
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-4 py-2.5 text-left label-mono"
+                                >
+                                    Status
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-4 py-2.5 text-left label-mono"
+                                >
+                                    Token Bulan Ini
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-6 py-2.5 text-right label-mono"
+                                >
+                                    Aksi
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.data.length === 0 ? (
+                                <tr className="border-t border-border">
+                                    <td
+                                        colSpan={5}
+                                        className="px-6 py-12 text-center text-muted-foreground"
+                                    >
+                                        Tidak ada pengguna ditemukan.
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-transparent">
-                                {users.data.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-6 py-12 text-center text-neutral-400"
+                            ) : (
+                                users.data.map((user) => {
+                                    // A zero quota divided by zero
+                                    // used to render "NaN%".
+                                    const quotaPercent =
+                                        user.token_quota > 0
+                                            ? Math.min(
+                                                  100,
+                                                  Math.round(
+                                                      (user.used_tokens /
+                                                          user.token_quota) *
+                                                          100,
+                                                  ),
+                                              )
+                                            : user.used_tokens > 0
+                                              ? 100
+                                              : 0;
+                                    const isActive = user.status === 'active';
+
+                                    return (
+                                        <tr
+                                            key={user.id}
+                                            className="border-t border-border transition-colors hover:bg-muted/40"
                                         >
-                                            Tidak ada pengguna ditemukan.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    users.data.map((user) => {
-                                        // A zero quota divided by zero
-                                        // used to render "NaN%".
-                                        const quotaPercent =
-                                            user.token_quota > 0
-                                                ? Math.min(
-                                                      100,
-                                                      Math.round(
-                                                          (user.used_tokens /
-                                                              user.token_quota) *
-                                                              100,
-                                                      ),
-                                                  )
-                                                : user.used_tokens > 0
-                                                  ? 100
-                                                  : 0;
-
-                                        return (
-                                            <tr
-                                                key={user.id}
-                                                className="transition-colors hover:bg-neutral-50/50 dark:hover:bg-neutral-800/10"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="font-semibold text-neutral-900 dark:text-neutral-100">
-                                                        {user.name}
-                                                    </div>
-                                                    <div className="text-xs text-neutral-400">
-                                                        {user.email}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Badge
-                                                        variant={
-                                                            user.role ===
-                                                            'admin'
-                                                                ? 'default'
-                                                                : 'secondary'
-                                                        }
-                                                        className="gap-1 font-medium"
+                                            <td className="h-[54px] px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold"
                                                     >
-                                                        {user.role ===
-                                                            'admin' && (
-                                                            <Shield className="h-3 w-3" />
+                                                        {getInitials(user.name)}
+                                                    </span>
+                                                    <div className="flex min-w-0 flex-col">
+                                                        <span className="truncate font-medium">
+                                                            {user.name}
+                                                        </span>
+                                                        <span className="truncate text-xs text-muted-foreground">
+                                                            {user.email}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4">
+                                                {user.role === 'admin' ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-[13px] font-medium">
+                                                        <Shield
+                                                            className="size-3.5"
+                                                            strokeWidth={1.75}
+                                                            aria-hidden="true"
+                                                        />
+                                                        Admin
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[13px] text-muted-foreground">
+                                                        User
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-4">
+                                                <span
+                                                    className={cn(
+                                                        'inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap',
+                                                        isActive
+                                                            ? 'bg-lime-100 text-lime-800 dark:bg-lime-950/60 dark:text-lime-300'
+                                                            : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300',
+                                                    )}
+                                                >
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className={cn(
+                                                            'size-1.5 rounded-full',
+                                                            isActive
+                                                                ? 'bg-lime-700 dark:bg-lime-400'
+                                                                : 'bg-red-700 dark:bg-red-400',
                                                         )}
-                                                        {user.role}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Badge
-                                                        variant={
-                                                            user.status ===
-                                                            'active'
-                                                                ? 'outline'
-                                                                : 'destructive'
-                                                        }
-                                                        className={`font-semibold ${
-                                                            user.status ===
-                                                            'active'
-                                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/20'
-                                                                : ''
-                                                        }`}
+                                                    />
+                                                    {isActive
+                                                        ? 'Aktif'
+                                                        : 'Ditangguhkan'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4">
+                                                <div className="flex w-[220px] flex-col gap-1.5">
+                                                    <div className="flex justify-between gap-3 font-mono text-xs">
+                                                        <span>
+                                                            {user.used_tokens.toLocaleString(
+                                                                'id-ID',
+                                                            )}{' '}
+                                                            /{' '}
+                                                            {user.token_quota.toLocaleString(
+                                                                'id-ID',
+                                                            )}
+                                                        </span>
+                                                        <span
+                                                            className={
+                                                                quotaPercent >=
+                                                                90
+                                                                    ? 'font-medium text-red-800 dark:text-red-300'
+                                                                    : quotaPercent >=
+                                                                        70
+                                                                      ? 'font-medium text-amber-800 dark:text-amber-300'
+                                                                      : 'text-muted-foreground'
+                                                            }
+                                                        >
+                                                            {quotaPercent}%
+                                                        </span>
+                                                    </div>
+                                                    <div
+                                                        aria-hidden="true"
+                                                        className="h-1 w-full bg-border"
                                                     >
-                                                        {user.status ===
-                                                        'active'
-                                                            ? 'Aktif'
-                                                            : 'Ditangguhkan'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="max-w-xs px-6 py-4">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <div className="flex justify-between text-xs font-medium">
-                                                            <span>
-                                                                {user.used_tokens.toLocaleString(
-                                                                    'id-ID',
-                                                                )}{' '}
-                                                                /{' '}
-                                                                {user.token_quota.toLocaleString(
-                                                                    'id-ID',
-                                                                )}
-                                                            </span>
-                                                            <span
-                                                                className={
-                                                                    quotaPercent >=
+                                                        <div
+                                                            className={cn(
+                                                                'h-1 transition-[width] duration-500',
+                                                                quotaPercent >=
                                                                     90
-                                                                        ? 'font-bold text-red-500'
-                                                                        : 'text-neutral-400'
-                                                                }
-                                                            >
-                                                                {quotaPercent}%
-                                                            </span>
-                                                        </div>
-                                                        <div className="bg-neutral-150 h-1.5 w-full overflow-hidden rounded-full dark:bg-neutral-800">
-                                                            <div
-                                                                className={`h-full rounded-full transition-all duration-500 ${
-                                                                    quotaPercent >=
-                                                                    90
-                                                                        ? 'bg-red-500'
-                                                                        : quotaPercent >=
-                                                                            70
-                                                                          ? 'bg-amber-500'
-                                                                          : 'bg-primary'
-                                                                }`}
-                                                                style={{
-                                                                    width: `${quotaPercent}%`,
-                                                                }}
-                                                            />
-                                                        </div>
+                                                                    ? 'bg-red-700 dark:bg-red-400'
+                                                                    : quotaPercent >=
+                                                                        70
+                                                                      ? 'bg-amber-700 dark:bg-amber-400'
+                                                                      : 'bg-foreground',
+                                                            )}
+                                                            style={{
+                                                                width: `${quotaPercent}%`,
+                                                            }}
+                                                        />
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100"
-                                                            onClick={() =>
-                                                                handleEditClick(
-                                                                    user,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-neutral-400 hover:text-red-600 disabled:opacity-50"
-                                                            disabled={
-                                                                user.id ===
-                                                                auth.user.id
-                                                            }
-                                                            onClick={() =>
-                                                                handleDeleteClick(
-                                                                    user,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between text-sm text-neutral-500">
-                        <span>
-                            {users.total === 0
-                                ? '0 pengguna'
-                                : `${users.from}–${users.to} dari ${users.total} pengguna`}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={!users.prev_page_url}
-                                onClick={() => goToPage(users.prev_page_url)}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                                Sebelumnya
-                            </Button>
-                            <span>
-                                {users.current_page} / {users.last_page}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={!users.next_page_url}
-                                onClick={() => goToPage(users.next_page_url)}
-                            >
-                                Berikutnya
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Waitlist */}
-            <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Inbox className="h-5 w-5" />
-                        Daftar Tunggu ({analytics.waitlist_count})
-                    </CardTitle>
-                    <CardDescription>
-                        Pengunjung yang meminta akses dari halaman depan. Buat
-                        akun untuk mereka, lalu kabari lewat email.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {waitlist.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-neutral-400">
-                            Belum ada yang mendaftar.
-                        </p>
-                    ) : (
-                        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
-                            <table className="w-full text-left text-sm text-neutral-700 dark:text-neutral-300">
-                                <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
-                                    <tr>
-                                        <th className="px-6 py-4">
-                                            Nama & Email
-                                        </th>
-                                        <th className="px-6 py-4">Catatan</th>
-                                        <th className="px-6 py-4">Tanggal</th>
-                                        <th className="px-6 py-4 text-right">
-                                            Aksi
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                                    {waitlist.map((entry) => (
-                                        <tr key={entry.id}>
-                                            <td className="px-6 py-4">
-                                                <div className="font-semibold text-neutral-900 dark:text-neutral-100">
-                                                    {entry.name ?? '—'}
-                                                </div>
-                                                <div className="text-xs text-neutral-400">
-                                                    {entry.email}
                                                 </div>
                                             </td>
-                                            <td className="max-w-sm whitespace-pre-line px-6 py-4 text-xs">
-                                                {entry.note ?? '—'}
-                                            </td>
-                                            <td className="px-6 py-4 text-xs text-neutral-400">
-                                                {new Date(
-                                                    entry.created_at,
-                                                ).toLocaleDateString('id-ID')}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="pr-4 text-right">
+                                                <div className="inline-flex gap-0.5">
                                                     <Button
-                                                        size="sm"
-                                                        variant="outline"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-8"
+                                                        aria-label={`Edit ${user.name}`}
                                                         onClick={() =>
-                                                            openCreate(entry)
+                                                            handleEditClick(
+                                                                user,
+                                                            )
                                                         }
                                                     >
-                                                        <UserPlus className="h-4 w-4" />
-                                                        Buat akun
+                                                        <Edit2
+                                                            className="size-4"
+                                                            strokeWidth={1.75}
+                                                        />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 text-neutral-400 hover:text-red-600"
-                                                        aria-label={`Hapus ${entry.email} dari daftar tunggu`}
+                                                        className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                        aria-label={`Hapus ${user.name}`}
+                                                        disabled={
+                                                            user.id ===
+                                                            auth.user.id
+                                                        }
                                                         onClick={() =>
-                                                            handleRemoveWaitlist(
-                                                                entry,
+                                                            handleDeleteClick(
+                                                                user,
                                                             )
                                                         }
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Trash2
+                                                            className="size-4"
+                                                            strokeWidth={1.75}
+                                                        />
                                                     </Button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-3 text-sm text-muted-foreground">
+                    <span>
+                        {users.total === 0
+                            ? '0 pengguna'
+                            : `${users.from}–${users.to} dari ${users.total} pengguna`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!users.prev_page_url}
+                            onClick={() => goToPage(users.prev_page_url)}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Sebelumnya
+                        </Button>
+                        <span className="font-mono text-xs">
+                            {users.current_page} / {users.last_page}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!users.next_page_url}
+                            onClick={() => goToPage(users.next_page_url)}
+                        >
+                            Berikutnya
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </section>
+
+            {/* Waitlist */}
+            <section
+                aria-labelledby="waitlist-title"
+                className="overflow-hidden rounded-xl border border-border bg-card"
+            >
+                <div className="px-4 py-3.5 lg:pl-6">
+                    <h2 id="waitlist-title" className="text-base font-semibold">
+                        Daftar Tunggu ({analytics.waitlist_count})
+                    </h2>
+                    <p className="text-[13px] text-muted-foreground">
+                        Pengunjung yang meminta akses dari halaman depan. Buat
+                        akun untuk mereka, lalu kabari lewat email.
+                    </p>
+                </div>
+                {waitlist.length === 0 ? (
+                    <p className="border-t border-border py-10 text-center text-sm text-muted-foreground">
+                        Belum ada yang mendaftar.
+                    </p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                            <thead>
+                                <tr className="border-t border-border">
+                                    <th
+                                        scope="col"
+                                        className="px-6 py-2.5 text-left label-mono"
+                                    >
+                                        Nama & Email
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-4 py-2.5 text-left label-mono"
+                                    >
+                                        Catatan
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-4 py-2.5 text-left label-mono"
+                                    >
+                                        Tanggal
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-6 py-2.5 text-right label-mono"
+                                    >
+                                        Aksi
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {waitlist.map((entry) => (
+                                    <tr
+                                        key={entry.id}
+                                        className="border-t border-border"
+                                    >
+                                        <td className="px-6 py-3">
+                                            <div className="font-medium">
+                                                {entry.name ?? '—'}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {entry.email}
+                                            </div>
+                                        </td>
+                                        <td className="max-w-sm px-4 py-3 text-xs whitespace-pre-line">
+                                            {entry.note ?? '—'}
+                                        </td>
+                                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                                            {new Date(
+                                                entry.created_at,
+                                            ).toLocaleDateString('id-ID')}
+                                        </td>
+                                        <td className="py-3 pr-4 text-right">
+                                            <div className="inline-flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        openCreate(entry)
+                                                    }
+                                                >
+                                                    <UserPlus
+                                                        className="h-4 w-4"
+                                                        strokeWidth={1.75}
+                                                    />
+                                                    Buat akun
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                    aria-label={`Hapus ${entry.email} dari daftar tunggu`}
+                                                    onClick={() =>
+                                                        handleRemoveWaitlist(
+                                                            entry,
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2
+                                                        className="h-4 w-4"
+                                                        strokeWidth={1.75}
+                                                    />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
 
             {/* Create User Modal */}
             <Dialog open={isCreating} onOpenChange={setIsCreating}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="bg-card sm:max-w-[425px]">
                     <form onSubmit={handleCreate}>
                         <DialogHeader>
-                            <DialogTitle>Tambah Pengguna</DialogTitle>
+                            <DialogTitle className={dialogTitleClasses}>
+                                Tambah Pengguna
+                            </DialogTitle>
                             <DialogDescription>
                                 Registrasi publik ditutup. Sampaikan email dan
                                 password awal ke pengguna secara langsung.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-5">
                             <div className="grid gap-2">
-                                <Label htmlFor="create-name">Nama</Label>
+                                <Label
+                                    htmlFor="create-name"
+                                    className={fieldLabelClasses}
+                                >
+                                    Nama
+                                </Label>
                                 <Input
                                     id="create-name"
                                     value={createForm.data.name}
@@ -762,7 +830,12 @@ export default function Dashboard({
                                 <InputError message={createForm.errors.name} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="create-email">Email</Label>
+                                <Label
+                                    htmlFor="create-email"
+                                    className={fieldLabelClasses}
+                                >
+                                    Email
+                                </Label>
                                 <Input
                                     id="create-email"
                                     type="email"
@@ -778,13 +851,17 @@ export default function Dashboard({
                                 <InputError message={createForm.errors.email} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="create-password">
+                                <Label
+                                    htmlFor="create-password"
+                                    className={fieldLabelClasses}
+                                >
                                     Password awal
                                 </Label>
                                 <Input
                                     id="create-password"
                                     type="text"
                                     autoComplete="new-password"
+                                    className="font-mono"
                                     value={createForm.data.password}
                                     onChange={(e) =>
                                         createForm.setData(
@@ -799,7 +876,12 @@ export default function Dashboard({
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="create-role">Role</Label>
+                                <Label
+                                    htmlFor="create-role"
+                                    className={fieldLabelClasses}
+                                >
+                                    Role
+                                </Label>
                                 <Select
                                     value={createForm.data.role}
                                     onValueChange={(val) =>
@@ -809,7 +891,10 @@ export default function Dashboard({
                                         )
                                     }
                                 >
-                                    <SelectTrigger id="create-role">
+                                    <SelectTrigger
+                                        id="create-role"
+                                        className="w-full"
+                                    >
                                         <SelectValue placeholder="Pilih Role" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -824,13 +909,17 @@ export default function Dashboard({
                                 <InputError message={createForm.errors.role} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="create-quota">
+                                <Label
+                                    htmlFor="create-quota"
+                                    className={fieldLabelClasses}
+                                >
                                     Kuota Token AI per Bulan
                                 </Label>
                                 <Input
                                     id="create-quota"
                                     type="number"
                                     min={0}
+                                    className="font-mono"
                                     value={createForm.data.token_quota}
                                     onChange={(e) =>
                                         createForm.setData(
@@ -872,19 +961,24 @@ export default function Dashboard({
                 open={editingUser !== null}
                 onOpenChange={(open) => !open && setEditingUser(null)}
             >
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="bg-card sm:max-w-[425px]">
                     <form onSubmit={handleSaveEdit}>
                         <DialogHeader>
-                            <DialogTitle>Edit Pengaturan Pengguna</DialogTitle>
+                            <DialogTitle className={dialogTitleClasses}>
+                                Edit Pengaturan Pengguna
+                            </DialogTitle>
                             <DialogDescription>
                                 Sesuaikan peranan, batas kuota token AI, dan
                                 status penangguhan akun untuk{' '}
                                 {editingUser?.name}.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-5">
                             <div className="grid gap-2">
-                                <Label htmlFor="role">
+                                <Label
+                                    htmlFor="role"
+                                    className={fieldLabelClasses}
+                                >
                                     Peranan Sistem (Role)
                                 </Label>
                                 <Select
@@ -893,7 +987,7 @@ export default function Dashboard({
                                         setEditRole(val as 'user' | 'admin')
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Pilih Role" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -908,7 +1002,12 @@ export default function Dashboard({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="status">Status Akun</Label>
+                                <Label
+                                    htmlFor="status"
+                                    className={fieldLabelClasses}
+                                >
+                                    Status Akun
+                                </Label>
                                 <Select
                                     value={editStatus}
                                     onValueChange={(val) =>
@@ -917,7 +1016,7 @@ export default function Dashboard({
                                         )
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Pilih Status" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -932,12 +1031,16 @@ export default function Dashboard({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="quota">
+                                <Label
+                                    htmlFor="quota"
+                                    className={fieldLabelClasses}
+                                >
                                     Kuota Token AI per Bulan
                                 </Label>
                                 <Input
                                     id="quota"
                                     type="number"
+                                    className="font-mono"
                                     value={editQuota}
                                     onChange={(e) =>
                                         setEditQuota(e.target.value)
@@ -968,15 +1071,19 @@ export default function Dashboard({
                 open={deletingUser !== null}
                 onOpenChange={(open) => !open && setDeletingUser(null)}
             >
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="bg-card sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-500">
-                            <Trash2 className="h-5 w-5" />
+                        <DialogTitle
+                            className={cn(
+                                dialogTitleClasses,
+                                'text-destructive',
+                            )}
+                        >
                             Konfirmasi Hapus Pengguna
                         </DialogTitle>
                         <DialogDescription className="pt-2">
                             Apakah Anda yakin ingin menghapus pengguna{' '}
-                            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                            <span className="font-medium text-foreground">
                                 {deletingUser?.name}
                             </span>
                             ? Tindakan ini bersifat permanen: seluruh dokumen

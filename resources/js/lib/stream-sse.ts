@@ -1,7 +1,8 @@
 type StreamHandlers = {
     /** Called with everything received so far, not just the new delta. */
     onChunk: (fullText: string) => void;
-    onDone: (fullText: string) => void;
+    /** `truncated`: the provider's output limit cut the answer short. */
+    onDone: (fullText: string, meta: { truncated: boolean }) => void;
     onError: (message: string) => void;
 };
 
@@ -94,7 +95,15 @@ export async function streamSse(
                 handlers.onChunk(fullText);
             }
         } else if (eventName === 'done') {
-            handlers.onDone(fullText);
+            let truncated = false;
+
+            try {
+                truncated = JSON.parse(dataText)?.truncated === true;
+            } catch {
+                // Older servers sent an empty payload.
+            }
+
+            handlers.onDone(fullText, { truncated });
         } else if (eventName === 'error') {
             let message = request.failureMessage ?? 'Permintaan gagal.';
 

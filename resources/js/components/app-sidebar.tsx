@@ -1,14 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    BookOpen,
-    FileText,
-    FolderGit2,
-    LayoutTemplate,
-    Settings,
-    Shield,
-} from 'lucide-react';
+import { FileText, LayoutTemplate, Settings, Shield } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -36,16 +28,16 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
+        title: 'Admin Dashboard',
+        href: '/admin/dashboard',
+        icon: Shield,
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
+        title: 'Pengaturan AI',
+        href: '/admin/ai',
+        icon: Settings,
     },
 ];
 
@@ -53,27 +45,16 @@ export function AppSidebar() {
     const { auth } = usePage().props;
     const userRole = (auth as any).user?.role;
 
-    const navItems = [...mainNavItems];
-
-    if (userRole === 'admin') {
-        navItems.push({
-            title: 'Admin Dashboard',
-            href: '/admin/dashboard',
-            icon: Shield,
-        });
-        navItems.push({
-            title: 'Pengaturan AI',
-            href: '/admin/ai',
-            icon: Settings,
-        });
-    }
-
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+        <Sidebar collapsible="icon" variant="sidebar">
+            <SidebarHeader className="px-3 pt-5 pb-3 group-data-[collapsible=icon]:px-2">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="hover:bg-transparent active:bg-transparent"
+                        >
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
                             </Link>
@@ -83,11 +64,13 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={navItems} />
+                <NavMain items={mainNavItems} />
+                {userRole === 'admin' && (
+                    <NavMain items={adminNavItems} label="Admin" />
+                )}
             </SidebarContent>
 
-            <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+            <SidebarFooter className="border-t border-sidebar-border px-3 py-3 group-data-[collapsible=icon]:px-2">
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

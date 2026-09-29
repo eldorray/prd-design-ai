@@ -1,18 +1,11 @@
 import { Head, router } from '@inertiajs/react';
-import { Plug, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import AiSettingController from '@/actions/App/Http/Controllers/Admin/AiSettingController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -25,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 type ProviderRow = {
     id: string;
@@ -50,6 +44,13 @@ type Props = {
     providers: ProviderRow[];
     prompts: PromptRow[];
 };
+
+// label-mono sorts before the Label primitive's own text utilities, so the
+// conflicting ones are overridden explicitly.
+const fieldLabelClasses = 'label-mono text-[11px] leading-[1.4] font-normal';
+const dialogTitleClasses = 'font-serif text-[28px] leading-tight font-normal';
+const monoBadgeClasses =
+    'h-5 gap-1.5 px-1.5 font-mono text-[11px] font-normal tracking-[0.04em] uppercase';
 
 export default function AiSettings({ providers, prompts }: Props) {
     // --- Provider form ---
@@ -195,30 +196,36 @@ export default function AiSettings({ providers, prompts }: Props) {
         <>
             <Head title="Pengaturan AI" />
 
-            <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-lg font-semibold">Pengaturan AI</h1>
-                        <p className="text-muted-foreground text-sm">
-                            Kelola provider model, kunci API, dan injeksi
-                            prompt.
-                        </p>
-                    </div>
-                </div>
+            <div className="flex flex-col gap-7 px-6 py-8 md:px-12 md:py-9">
+                <header className="flex flex-col gap-2.5">
+                    <span className="label-mono">Admin</span>
+                    <h1 className="font-serif text-[44px] leading-none font-normal tracking-[-0.015em] md:text-[52px]">
+                        Pengaturan AI
+                    </h1>
+                    <p className="text-[15px] text-muted-foreground">
+                        Kelola provider model, kunci API, dan injeksi prompt.
+                    </p>
+                </header>
 
                 {/* Providers */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <Plug className="text-primary size-4" />
+                <section
+                    aria-labelledby="providers-title"
+                    className="overflow-hidden rounded-xl border border-border bg-card"
+                >
+                    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 lg:pl-6">
+                        <div className="min-w-0">
+                            <h2
+                                id="providers-title"
+                                className="text-base font-semibold"
+                            >
                                 Provider
-                            </CardTitle>
-                            <CardDescription>
+                            </h2>
+                            <p className="text-[13px] text-muted-foreground">
                                 Base URL dan API key per provider. Model dimuat
-                                langsung dari <code>{`{base_url}/models`}</code>
+                                langsung dari{' '}
+                                <code className="font-mono text-xs">{`{base_url}/models`}</code>
                                 .
-                            </CardDescription>
+                            </p>
                         </div>
                         <Button
                             size="sm"
@@ -226,47 +233,60 @@ export default function AiSettings({ providers, prompts }: Props) {
                         >
                             Tambah provider
                         </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {providers.length === 0 ? (
-                            <p className="text-muted-foreground py-6 text-center text-sm">
-                                Belum ada provider. Aplikasi memakai konfigurasi
-                                default dari .env (deepseek, gemini,
-                                tokenrouter).
-                            </p>
-                        ) : (
-                            providers.map((provider) => (
-                                <div
+                    </div>
+                    {providers.length === 0 ? (
+                        <p className="border-t border-border px-6 py-10 text-center text-sm text-muted-foreground">
+                            Belum ada provider. Aplikasi memakai konfigurasi
+                            default dari .env (deepseek, gemini, tokenrouter).
+                        </p>
+                    ) : (
+                        <ul>
+                            {providers.map((provider) => (
+                                <li
                                     key={provider.id}
-                                    className="border-border rounded-lg border p-4"
+                                    className="border-t border-border px-4 py-4 lg:px-6"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <p className="font-medium">
                                                     {provider.name}
                                                 </p>
                                                 <Badge
-                                                    variant={
+                                                    variant="outline"
+                                                    className={cn(
+                                                        monoBadgeClasses,
                                                         provider.is_active
-                                                            ? 'default'
-                                                            : 'secondary'
-                                                    }
+                                                            ? 'border-input text-foreground'
+                                                            : 'text-muted-foreground',
+                                                    )}
                                                 >
+                                                    {provider.is_active && (
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="size-1.5 rounded-full bg-lime-700 dark:bg-lime-400"
+                                                        />
+                                                    )}
                                                     {provider.is_active
                                                         ? 'Aktif'
                                                         : 'Nonaktif'}
                                                 </Badge>
                                                 {provider.supports_thinking ? (
-                                                    <Badge variant="outline">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            monoBadgeClasses,
+                                                            'text-muted-foreground',
+                                                        )}
+                                                    >
                                                         thinking
                                                     </Badge>
                                                 ) : null}
                                             </div>
-                                            <p className="text-muted-foreground mt-1 truncate font-mono text-xs">
+                                            <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
                                                 {provider.base_url}
                                             </p>
-                                            <p className="text-muted-foreground mt-0.5 text-xs">
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
                                                 Key:{' '}
                                                 {provider.has_key
                                                     ? 'tersimpan'
@@ -303,13 +323,14 @@ export default function AiSettings({ providers, prompts }: Props) {
                                             >
                                                 <RefreshCw
                                                     className={`size-4 ${loadingModelsFor === provider.id ? 'animate-spin' : ''}`}
+                                                    strokeWidth={1.75}
                                                 />
                                                 Muat model
                                             </Button>
                                             <Button
-                                                size="sm"
+                                                size="icon"
                                                 variant="ghost"
-                                                className="text-destructive"
+                                                className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 onClick={() =>
                                                     setDeletingProvider(
                                                         provider,
@@ -317,7 +338,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 }
                                                 aria-label={`Hapus ${provider.name}`}
                                             >
-                                                <Trash2 className="size-4" />
+                                                <Trash2
+                                                    className="size-4"
+                                                    strokeWidth={1.75}
+                                                />
                                             </Button>
                                         </div>
                                     </div>
@@ -328,8 +352,8 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 (model) => (
                                                     <Badge
                                                         key={model}
-                                                        variant="secondary"
-                                                        className="font-mono text-xs"
+                                                        variant="outline"
+                                                        className="bg-background font-mono text-[11px] font-normal text-muted-foreground"
                                                     >
                                                         {model}
                                                     </Badge>
@@ -337,24 +361,29 @@ export default function AiSettings({ providers, prompts }: Props) {
                                             )}
                                         </div>
                                     ) : null}
-                                </div>
-                            ))
-                        )}
-                    </CardContent>
-                </Card>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
 
                 {/* Prompt injections */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <Sparkles className="text-primary size-4" />
+                <section
+                    aria-labelledby="prompts-title"
+                    className="overflow-hidden rounded-xl border border-border bg-card"
+                >
+                    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 lg:pl-6">
+                        <div className="min-w-0">
+                            <h2
+                                id="prompts-title"
+                                className="text-base font-semibold"
+                            >
                                 Injeksi Prompt
-                            </CardTitle>
-                            <CardDescription>
+                            </h2>
+                            <p className="text-[13px] text-muted-foreground">
                                 Instruksi tambahan yang disisipkan ke system
                                 prompt setiap generate PRD atau design.
-                            </CardDescription>
+                            </p>
                         </div>
                         <Button
                             size="sm"
@@ -362,22 +391,28 @@ export default function AiSettings({ providers, prompts }: Props) {
                         >
                             Tambah injeksi
                         </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {prompts.length === 0 ? (
-                            <p className="text-muted-foreground py-6 text-center text-sm">
-                                Belum ada injeksi prompt.
-                            </p>
-                        ) : (
-                            prompts.map((prompt) => (
-                                <div
+                    </div>
+                    {prompts.length === 0 ? (
+                        <p className="border-t border-border px-6 py-10 text-center text-sm text-muted-foreground">
+                            Belum ada injeksi prompt.
+                        </p>
+                    ) : (
+                        <ul>
+                            {prompts.map((prompt) => (
+                                <li
                                     key={prompt.id}
-                                    className="border-border rounded-lg border p-4"
+                                    className="border-t border-border px-4 py-4 lg:px-6"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge
+                                                    variant="outline"
+                                                    className={cn(
+                                                        monoBadgeClasses,
+                                                        'text-muted-foreground',
+                                                    )}
+                                                >
                                                     {prompt.scope === 'prd'
                                                         ? 'PRD'
                                                         : 'Design'}
@@ -386,7 +421,7 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                     {prompt.label}
                                                 </p>
                                             </div>
-                                            <pre className="bg-muted/40 text-muted-foreground mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap rounded p-2 font-mono text-xs">
+                                            <pre className="mt-2 max-h-24 overflow-y-auto rounded-md border border-border bg-background p-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
                                                 {prompt.content}
                                             </pre>
                                         </div>
@@ -399,23 +434,26 @@ export default function AiSettings({ providers, prompts }: Props) {
                                                 aria-label={`Aktifkan ${prompt.label}`}
                                             />
                                             <Button
-                                                size="sm"
+                                                size="icon"
                                                 variant="ghost"
-                                                className="text-destructive"
+                                                className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 onClick={() =>
                                                     setDeletingPrompt(prompt)
                                                 }
                                                 aria-label={`Hapus ${prompt.label}`}
                                             >
-                                                <Trash2 className="size-4" />
+                                                <Trash2
+                                                    className="size-4"
+                                                    strokeWidth={1.75}
+                                                />
                                             </Button>
                                         </div>
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </CardContent>
-                </Card>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
             </div>
 
             {/* Add provider dialog */}
@@ -423,22 +461,34 @@ export default function AiSettings({ providers, prompts }: Props) {
                 open={showProviderDialog}
                 onOpenChange={setShowProviderDialog}
             >
-                <DialogContent>
+                <DialogContent className="bg-card">
                     <DialogHeader>
-                        <DialogTitle>Tambah provider</DialogTitle>
+                        <DialogTitle className={dialogTitleClasses}>
+                            Tambah provider
+                        </DialogTitle>
                         <DialogDescription>
                             Provider harus kompatibel dengan OpenAI API
-                            (endpoint <code>/chat/completions</code> dan{' '}
-                            <code>/models</code>).
+                            (endpoint{' '}
+                            <code className="font-mono text-xs">
+                                /chat/completions
+                            </code>{' '}
+                            dan{' '}
+                            <code className="font-mono text-xs">/models</code>
+                            ).
                         </DialogDescription>
-                        <DialogDescription>
+                        <DialogDescription className="font-mono text-xs">
                             Contoh base URL: https://api.deepseek.com ·
                             https://api.tokenrouter.com/v1
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3">
-                        <div>
-                            <Label htmlFor="provider-name">Nama</Label>
+                    <div className="grid gap-4 py-1">
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="provider-name"
+                                className={fieldLabelClasses}
+                            >
+                                Nama
+                            </Label>
                             <Input
                                 id="provider-name"
                                 value={form.name}
@@ -448,10 +498,16 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 placeholder="DeepSeek"
                             />
                         </div>
-                        <div>
-                            <Label htmlFor="provider-slug">Slug</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="provider-slug"
+                                className={fieldLabelClasses}
+                            >
+                                Slug
+                            </Label>
                             <Input
                                 id="provider-slug"
+                                className="font-mono"
                                 value={form.slug}
                                 onChange={(e) =>
                                     setForm({ ...form, slug: e.target.value })
@@ -459,10 +515,16 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 placeholder="deepseek"
                             />
                         </div>
-                        <div>
-                            <Label htmlFor="provider-url">Base URL</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="provider-url"
+                                className={fieldLabelClasses}
+                            >
+                                Base URL
+                            </Label>
                             <Input
                                 id="provider-url"
+                                className="font-mono"
                                 value={form.base_url}
                                 onChange={(e) =>
                                     setForm({
@@ -473,11 +535,17 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 placeholder="https://api.deepseek.com"
                             />
                         </div>
-                        <div>
-                            <Label htmlFor="provider-key">API key</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="provider-key"
+                                className={fieldLabelClasses}
+                            >
+                                API key
+                            </Label>
                             <Input
                                 id="provider-key"
                                 type="password"
+                                className="font-mono"
                                 value={form.api_key}
                                 onChange={(e) =>
                                     setForm({
@@ -488,7 +556,7 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 placeholder="sk-..."
                             />
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 pt-1">
                             <Switch
                                 id="provider-thinking"
                                 checked={form.supports_thinking}
@@ -499,7 +567,10 @@ export default function AiSettings({ providers, prompts }: Props) {
                                     })
                                 }
                             />
-                            <Label htmlFor="provider-thinking">
+                            <Label
+                                htmlFor="provider-thinking"
+                                className="font-normal"
+                            >
                                 Mendukung opsi thinking/reasoning
                             </Label>
                         </div>
@@ -529,17 +600,24 @@ export default function AiSettings({ providers, prompts }: Props) {
 
             {/* Add prompt dialog */}
             <Dialog open={showPromptDialog} onOpenChange={setShowPromptDialog}>
-                <DialogContent>
+                <DialogContent className="bg-card">
                     <DialogHeader>
-                        <DialogTitle>Tambah injeksi prompt</DialogTitle>
+                        <DialogTitle className={dialogTitleClasses}>
+                            Tambah injeksi prompt
+                        </DialogTitle>
                         <DialogDescription>
                             Teks ini disisipkan sebagai system prompt tambahan
                             pada setiap permintaan generate.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3">
-                        <div>
-                            <Label htmlFor="prompt-scope">Berlaku untuk</Label>
+                    <div className="grid gap-4 py-1">
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="prompt-scope"
+                                className={fieldLabelClasses}
+                            >
+                                Berlaku untuk
+                            </Label>
                             <select
                                 id="prompt-scope"
                                 value={promptForm.scope}
@@ -549,14 +627,19 @@ export default function AiSettings({ providers, prompts }: Props) {
                                         scope: e.target.value,
                                     })
                                 }
-                                className="border-input bg-background mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                             >
                                 <option value="prd">PRD Generator</option>
                                 <option value="design">Design Studio</option>
                             </select>
                         </div>
-                        <div>
-                            <Label htmlFor="prompt-label">Label</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="prompt-label"
+                                className={fieldLabelClasses}
+                            >
+                                Label
+                            </Label>
                             <Input
                                 id="prompt-label"
                                 value={promptForm.label}
@@ -569,8 +652,13 @@ export default function AiSettings({ providers, prompts }: Props) {
                                 placeholder="Selalu pakai bahasa Indonesia formal"
                             />
                         </div>
-                        <div>
-                            <Label htmlFor="prompt-content">Isi prompt</Label>
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor="prompt-content"
+                                className={fieldLabelClasses}
+                            >
+                                Isi prompt
+                            </Label>
                             <Textarea
                                 id="prompt-content"
                                 value={promptForm.content}
@@ -581,7 +669,7 @@ export default function AiSettings({ providers, prompts }: Props) {
                                     })
                                 }
                                 placeholder="Tulis instruksi tambahan di sini..."
-                                className="min-h-28"
+                                className="min-h-28 font-mono text-[13px]"
                             />
                         </div>
                     </div>
@@ -612,9 +700,11 @@ export default function AiSettings({ providers, prompts }: Props) {
                 open={deletingProvider !== null}
                 onOpenChange={(open) => !open && setDeletingProvider(null)}
             >
-                <DialogContent>
+                <DialogContent className="bg-card">
                     <DialogHeader>
-                        <DialogTitle>Hapus provider?</DialogTitle>
+                        <DialogTitle className={dialogTitleClasses}>
+                            Hapus provider?
+                        </DialogTitle>
                         <DialogDescription>
                             {deletingProvider?.name} akan dihapus dari daftar.
                             Model dari provider ini tidak akan tersedia lagi.
@@ -651,9 +741,11 @@ export default function AiSettings({ providers, prompts }: Props) {
                 open={deletingPrompt !== null}
                 onOpenChange={(open) => !open && setDeletingPrompt(null)}
             >
-                <DialogContent>
+                <DialogContent className="bg-card">
                     <DialogHeader>
-                        <DialogTitle>Hapus injeksi prompt?</DialogTitle>
+                        <DialogTitle className={dialogTitleClasses}>
+                            Hapus injeksi prompt?
+                        </DialogTitle>
                         <DialogDescription>
                             "{deletingPrompt?.label}" akan berhenti disisipkan
                             ke permintaan generate.

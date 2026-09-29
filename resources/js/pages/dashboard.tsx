@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { FileText, Loader2, PanelLeft, Plus } from 'lucide-react';
+import { Loader2, PanelLeft, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -8,8 +8,14 @@ import PrdController from '@/actions/App/Http/Controllers/PrdController';
 import PrdStreamController from '@/actions/App/Http/Controllers/PrdStreamController';
 import { HistorySidebar } from '@/components/prd/history-sidebar';
 import { IdeaStage } from '@/components/prd/idea-stage';
-import { InterviewStage } from '@/components/prd/interview-stage';
-import { PrdStage } from '@/components/prd/prd-stage';
+import {
+    InterviewPanel,
+    InterviewProgressBar,
+    InterviewStage,
+    interviewReadiness,
+} from '@/components/prd/interview-stage';
+import { PrdActions, PrdPanel, PrdStage } from '@/components/prd/prd-stage';
+import type { TokenQuota } from '@/components/prd/quota-meter';
 import { Stepper } from '@/components/prd/stepper';
 import type { Stage } from '@/components/prd/stepper';
 import { Button } from '@/components/ui/button';
@@ -27,6 +33,11 @@ import type { AiModelOption } from '@/hooks/use-ai-models';
 import { useClipboard } from '@/hooks/use-clipboard';
 import type { Model } from '@/lib/models';
 import {
+    checkPrdCompleteness,
+    mergePrdSections,
+    sectionsToComplete,
+} from '@/lib/prd-completeness';
+import {
     deriveTitle,
     hydrateMessages,
     isPrdContent,
@@ -37,7 +48,14 @@ import { streamSse } from '@/lib/stream-sse';
 import { cn } from '@/lib/utils';
 import type { Auth, Prd, PrdSummary, PrdVersionSummary, User } from '@/types';
 
-type Mode = 'interview' | 'generate' | 'refine';
+type Mode = 'interview' | 'generate' | 'refine' | 'complete';
+
+type StreamOptions = {
+    /** Extra request fields, e.g. the sections "complete" should write. */
+    extra?: Record<string, unknown>;
+    /** Turns the streamed text into the document to show and save. */
+    transform?: (text: string) => string;
+};
 
 type AssistantResponse = {
     message: string;
@@ -52,12 +70,15 @@ type PageProps = {
     history: PrdSummary[];
     current: Prd | null;
     versions: PrdVersionSummary[];
+    quota: TokenQuota;
+    /** Required `##` sections, from App\Support\PrdTemplate. */
+    prdSections: string[];
     aiModels?: string[];
     [key: string]: unknown;
 };
 
 export default function Dashboard() {
-    const { auth, history, current, versions, aiModels } =
+    const { auth, history, current, versions, quota, prdSections, aiModels } =
         usePage<PageProps>().props;
     const {
         models: availableModels,
@@ -74,6 +95,8 @@ export default function Dashboard() {
             history={history}
             current={current}
             versions={versions ?? []}
+            quota={quota}
+            prdSections={prdSections ?? []}
             aiModels={availableModels}
             areModelsLoading={areModelsLoading}
             modelError={modelError}
@@ -86,6 +109,8 @@ function PrdWorkspace({
     history,
     current,
     versions,
+    quota,
+    prdSections,
     aiModels,
     areModelsLoading,
     modelError,
@@ -94,6 +119,8 @@ function PrdWorkspace({
     history: PrdSummary[];
     current: Prd | null;
     versions: PrdVersionSummary[];
+    quota: TokenQuota;
+    prdSections: string[];
     aiModels: AiModelOption[];
     areModelsLoading: boolean;
     modelError: string | null;
@@ -129,6 +156,12 @@ function PrdWorkspace({
     // The document as it streams in; null when no generation is running.
     const [streamingPrd, setStreamingPrd] = useState<string | null>(null);
     const streamAbortRef = useRef<AbortController | null>(null);
+    // The provider cut the last generation off at its output limit.
+    const [lastTruncated, setLastTruncated] = useState(false);
+    const completeness = useMemo(
+        () => checkPrdCompleteness(prd, prdSections, lastTruncated),
+        [prd, prdSections, lastTruncated],
+    );
     const [messages, setMessages] = useState<ChatMessage[]>(() =>
         current ? hydrateMessages(current.messages ?? []) : [],
     );
@@ -147,8 +180,14 @@ function PrdWorkspace({
         setCurrentPrdId(id);
     };
 
+    // The first user message is the idea itself, not an answer.
     const answeredQuestions = useMemo(
-        () => messages.filter((message) => message.role === 'user').length,
+        () =>
+            Math.max(
+                messages.filter((message) => message.role === 'user').length -
+                    1,
+                0,
+            ),
         [messages],
     );
 
@@ -166,10 +205,21 @@ function PrdWorkspace({
             : null;
 
     const canGenerate = answeredQuestions >= 2;
+    const readiness = interviewReadiness({
+        answeredQuestions,
+        canGenerate,
+        activeQuestionContent: activeQuestion?.content ?? null,
+    });
 
     useEffect(() => {
         if (stage === 'interview') {
-            transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            // Align the end of the stage (the answer composer) with the
+            // bottom of the viewport, not its top: below xl the session
+            // panel follows the stage and would otherwise scroll into view.
+            transcriptEndRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'end',
+            });
         }
     }, [messages, isLoading, stage]);
 
@@ -180,6 +230,9 @@ function PrdWorkspace({
         document
             .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
             ?.getAttribute('content') ?? '';
+
+    // Every AI call debits the monthly token quota shown in the panel.
+    const refreshQuota = () => router.reload({ only: ['quota'] });
 
     const persistPrd = async (
         nextMessages: ChatMessage[],
@@ -228,11 +281,11 @@ function PrdWorkspace({
                         preserveState: true,
                         preserveScroll: true,
                         replace: true,
-                        only: ['history', 'current', 'versions'],
+                        only: ['history', 'current', 'versions', 'quota'],
                     },
                 );
             } else {
-                router.reload({ only: ['history', 'versions'] });
+                router.reload({ only: ['history', 'versions', 'quota'] });
             }
         } catch {
             toast.error('PRD belum tersimpan. Perubahan masih ada di layar.');
@@ -245,6 +298,7 @@ function PrdWorkspace({
         mode: Mode,
         content: string,
         displayContent = content,
+        streamOptions: StreamOptions = {},
     ): Promise<boolean> => {
         const trimmedContent = content.trim();
         const trimmedDisplayContent = displayContent.trim();
@@ -279,10 +333,16 @@ function PrdWorkspace({
                 role,
                 content,
             })),
+            ...streamOptions.extra,
         };
 
         if (mode !== 'interview') {
-            return streamPrd(requestBody, displayMessages, previousMessages);
+            return streamPrd(
+                requestBody,
+                displayMessages,
+                previousMessages,
+                streamOptions.transform,
+            );
         }
 
         try {
@@ -343,8 +403,11 @@ function PrdWorkspace({
 
             // Only interviews come through here (generate/refine stream), so
             // an answer changes the transcript but never the document.
+            // Saving reloads the quota too; an unsaved draft reloads it alone.
             if (currentPrdIdRef.current) {
                 await persistPrd(finalMessages, prd);
+            } else {
+                refreshQuota();
             }
 
             return true;
@@ -375,11 +438,13 @@ function PrdWorkspace({
         requestBody: Record<string, unknown>,
         displayMessages: ChatMessage[],
         previousMessages: ChatMessage[],
+        transform: (text: string) => string = (text) => text,
     ): Promise<boolean> => {
         const controller = new AbortController();
         streamAbortRef.current = controller;
         const previousStage = stage;
         let finalText = '';
+        let truncated = false;
         let failure: string | null = null;
 
         setStage('prd');
@@ -396,9 +461,10 @@ function PrdWorkspace({
                     failureMessage: 'PRD belum bisa dibuat. Coba lagi.',
                 },
                 {
-                    onChunk: (fullText) => setStreamingPrd(fullText),
-                    onDone: (fullText) => {
-                        finalText = fullText.trim();
+                    onChunk: (fullText) => setStreamingPrd(transform(fullText)),
+                    onDone: (fullText, meta) => {
+                        finalText = transform(fullText).trim();
+                        truncated = meta.truncated;
                     },
                     onError: (message) => {
                         failure = message;
@@ -421,6 +487,8 @@ function PrdWorkspace({
         }
 
         if (failure !== null || !finalText) {
+            // A stream that died mid-flight keeps its quota reservation.
+            refreshQuota();
             setMessages(previousMessages);
             setStage(prd.trim() ? 'prd' : previousStage);
             setError(failure ?? 'AI tidak mengembalikan PRD. Coba lagi.');
@@ -435,9 +503,39 @@ function PrdWorkspace({
 
         setMessages(finalMessages);
         setPrd(finalText);
+        setLastTruncated(truncated);
         await persistPrd(finalMessages, finalText);
 
         return true;
+    };
+
+    /**
+     * Ask only for the sections the document lacks (or the cut-off tail) and
+     * slot them into place. Works even when the provider's output limit is
+     * too small for a whole PRD in one answer.
+     */
+    const completePrd = () => {
+        const sections = sectionsToComplete(completeness, prdSections);
+
+        if (sections.length === 0) {
+            return;
+        }
+
+        const draft = prd;
+        const replace = completeness.incomplete
+            ? [completeness.incomplete]
+            : [];
+
+        askAssistant(
+            'complete',
+            `Lengkapi section PRD yang belum ada: ${sections.join(', ')}.`,
+            undefined,
+            {
+                extra: { missing_sections: sections },
+                transform: (text) =>
+                    mergePrdSections(draft, text, prdSections, replace),
+            },
+        );
     };
 
     const restoreVersion = async (versionId: string) => {
@@ -625,201 +723,248 @@ function PrdWorkspace({
         <>
             <Head title="Workspace" />
 
-            <div className="m3 m3-workspace bg-background text-foreground flex min-h-screen flex-col">
+            <div className="min-h-screen bg-background text-foreground">
                 <a
-                    className="m3-skip-link print:hidden"
+                    className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-background print:hidden"
                     href="#workspace-content"
                 >
                     Lewati ke workspace
                 </a>
-                <div className="flex flex-1">
-                    <div className="contents print:hidden">
-                        <HistorySidebar
-                            open={historyOpen}
-                            history={history}
-                            currentPrdId={currentPrdId}
-                            onClose={() => setHistoryOpen(false)}
-                            onNew={startNewPrd}
-                            onOpen={openPrd}
-                            onDelete={deletePrd}
-                        />
-                    </div>
 
-                    <Dialog
-                        open={pendingDeleteId !== null}
-                        onOpenChange={(open) =>
-                            !open && setPendingDeleteId(null)
-                        }
-                    >
-                        <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Hapus PRD?</DialogTitle>
-                                <DialogDescription>
-                                    Tindakan ini tidak bisa dibatalkan. PRD
-                                    beserta seluruh isinya akan dihapus
-                                    permanen.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setPendingDeleteId(null)}
-                                >
-                                    Batal
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDelete}
-                                >
-                                    Hapus
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                <HistorySidebar
+                    user={user}
+                    open={historyOpen}
+                    history={history}
+                    currentPrdId={currentPrdId}
+                    onClose={() => setHistoryOpen(false)}
+                    onNew={startNewPrd}
+                    onOpen={openPrd}
+                    onDelete={deletePrd}
+                />
 
-                    <div className="flex min-w-0 flex-1 flex-col">
-                        <header className="m3-workspace-appbar sticky top-0 z-20 flex min-h-16 shrink-0 items-center print:hidden">
-                            <div className="flex w-full items-center justify-between gap-3 px-4 md:px-6">
-                                <div className="flex items-center gap-2">
+                <Dialog
+                    open={pendingDeleteId !== null}
+                    onOpenChange={(open) => !open && setPendingDeleteId(null)}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="font-serif text-2xl font-normal">
+                                Hapus PRD?
+                            </DialogTitle>
+                            <DialogDescription>
+                                Tindakan ini tidak bisa dibatalkan. PRD beserta
+                                seluruh isinya akan dihapus permanen.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setPendingDeleteId(null)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={confirmDelete}
+                            >
+                                Hapus
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Rail on the left from lg; the stage's side panel is fixed
+                    on the right from xl and follows the stage below it. */}
+                <div
+                    className={cn(
+                        'flex min-h-screen min-w-0 flex-col lg:pl-[248px] print:p-0',
+                        stage === 'interview' && 'xl:pr-[368px]',
+                        stage === 'prd' && 'xl:pr-[320px]',
+                    )}
+                >
+                    <header className="sticky top-0 z-20 flex shrink-0 flex-col border-b bg-background print:hidden">
+                        <div className="flex h-14 items-center gap-2 px-2 sm:gap-3 md:px-6 lg:h-16 xl:px-8 2xl:px-10">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    'lg:hidden',
+                                    historyOpen && 'hidden',
+                                )}
+                                aria-label="Buka riwayat"
+                                onClick={() => setHistoryOpen(true)}
+                            >
+                                <PanelLeft className="size-4" />
+                            </Button>
+                            <h1 className="sr-only">PRD Workspace</h1>
+
+                            <div className="min-w-0 flex-1">
+                                <Stepper
+                                    stage={stage}
+                                    showChecks={stage !== 'prd'}
+                                    className="hidden md:flex"
+                                />
+                                <Stepper
+                                    stage={stage}
+                                    compact
+                                    className="md:hidden"
+                                />
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                                {isSaving ? (
+                                    <span className="hidden items-center gap-1.5 text-[13px] text-muted-foreground sm:flex">
+                                        <Loader2 className="size-3 animate-spin" />
+                                        Menyimpan
+                                    </span>
+                                ) : stage === 'interview' && currentPrdId ? (
+                                    <span className="hidden items-center gap-2 text-[13px] text-muted-foreground sm:flex">
+                                        <span
+                                            aria-hidden="true"
+                                            className="size-1.5 rounded-full bg-lime-700 dark:bg-lime-500"
+                                        />
+                                        Tersimpan otomatis
+                                    </span>
+                                ) : null}
+                                {stage === 'prd' ? (
+                                    <PrdActions
+                                        compact
+                                        prdId={currentPrdId}
+                                        isStreaming={streamingPrd !== null}
+                                        onCopy={copyPrd}
+                                        onExport={exportMarkdown}
+                                        onPrint={printPrd}
+                                        className="hidden xl:flex"
+                                    />
+                                ) : null}
+                                {/* The rail's "PRD baru" is one tap away only from lg. */}
+                                {stage !== 'idea' ? (
                                     <Button
                                         type="button"
-                                        variant="ghost"
                                         size="icon"
-                                        className={cn(
-                                            'transition-all',
-                                            historyOpen ? 'hidden' : 'flex',
-                                        )}
-                                        aria-label="Buka riwayat"
-                                        onClick={() => setHistoryOpen(true)}
+                                        className="lg:hidden"
+                                        aria-label="Buat PRD baru"
+                                        onClick={startNewPrd}
                                     >
-                                        <PanelLeft className="size-4" />
+                                        <Plus className="size-4" />
                                     </Button>
-                                    <div className="m3-product-mark flex size-10 items-center justify-center">
-                                        <FileText className="size-5" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-sm font-medium tracking-tight">
-                                            PRD Workspace
-                                        </h1>
-                                        <p className="text-xs text-[var(--m3-on-surface-var)]">
-                                            Rancang bersama AI, {user.name}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    {isSaving ? (
-                                        <span className="text-muted-foreground hidden items-center gap-1.5 text-xs sm:flex">
-                                            <Loader2 className="size-3 animate-spin" />
-                                            Menyimpan
-                                        </span>
-                                    ) : null}
-                                    <div className="hidden md:block">
-                                        <Stepper stage={stage} />
-                                    </div>
-                                    <UserMenu
-                                        user={user}
-                                        showChevron
-                                        dataTest="user-menu-button"
-                                    />
-                                </div>
+                                ) : null}
+                                <UserMenu
+                                    user={user}
+                                    className="lg:hidden max-sm:[&>div]:hidden"
+                                />
                             </div>
-                        </header>
+                        </div>
+                        {stage === 'interview' ? (
+                            <InterviewProgressBar
+                                answeredQuestions={answeredQuestions}
+                                className="px-4 pb-3 md:px-6 xl:hidden"
+                            />
+                        ) : null}
+                    </header>
 
-                        <main
-                            id="workspace-content"
-                            className={cn(
-                                'm3-workspace-canvas mx-auto w-full flex-1 px-4 py-6 md:px-8 md:py-10',
-                                stage === 'prd' ? 'max-w-5xl' : 'max-w-4xl',
-                            )}
-                        >
-                            <div className="mb-6 md:hidden print:hidden">
-                                <Stepper stage={stage} />
-                            </div>
-                            {error ? (
-                                <div className="border-destructive/30 bg-destructive/10 text-destructive mb-6 rounded-lg border px-4 py-3 text-sm print:hidden">
-                                    {error}
-                                </div>
-                            ) : null}
-
-                            {stage === 'idea' ? (
-                                <IdeaStage
-                                    idea={idea}
-                                    model={model}
-                                    models={aiModels}
-                                    areModelsLoading={areModelsLoading}
-                                    modelError={modelError}
-                                    isLoading={isLoading}
-                                    onIdeaChange={setIdea}
-                                    onModelChange={setSelectedModel}
-                                    onStart={startInterview}
-                                />
-                            ) : null}
-
-                            {stage === 'interview' ? (
-                                <InterviewStage
-                                    idea={idea}
-                                    model={model}
-                                    models={aiModels}
-                                    areModelsLoading={areModelsLoading}
-                                    modelError={modelError}
-                                    answer={answer}
-                                    selectedExamples={selectedExamples}
-                                    messages={interviewMessages}
-                                    activeQuestionId={
-                                        activeQuestion?.id ?? null
-                                    }
-                                    isLoading={isLoading}
-                                    answeredQuestions={answeredQuestions}
-                                    canGenerate={canGenerate}
-                                    hasPrd={Boolean(prd.trim())}
-                                    transcriptEndRef={transcriptEndRef}
-                                    onModelChange={setSelectedModel}
-                                    onAnswerChange={setAnswer}
-                                    onToggleExample={toggleExample}
-                                    onSubmitAnswer={submitAnswer}
-                                    onGenerate={generatePrd}
-                                    onBackToPrd={() => setStage('prd')}
-                                />
-                            ) : null}
-
-                            {stage === 'prd' ? (
-                                <PrdStage
-                                    prd={streamingPrd ?? prd}
-                                    isStreaming={streamingPrd !== null}
-                                    revision={revision}
-                                    isLoading={isLoading}
-                                    lastUsage={lastUsage}
-                                    prdId={currentPrdId}
-                                    versions={versions}
-                                    onRevisionChange={setRevision}
-                                    onRequestRevision={requestRevision}
-                                    onRegenerate={generatePrd}
-                                    onRestoreVersion={restoreVersion}
-                                    onCopy={copyPrd}
-                                    onExport={exportMarkdown}
-                                    onPrint={printPrd}
-                                    onBackToInterview={() =>
-                                        setStage('interview')
-                                    }
-                                />
-                            ) : null}
-                        </main>
-                    </div>
-                </div>
-
-                {/* Pixel-style FAB: start a new PRD from anywhere in the workspace */}
-                {stage !== 'idea' ? (
-                    <button
-                        type="button"
-                        className="m3-fab print:hidden"
-                        onClick={startNewPrd}
-                        aria-label="Buat PRD baru"
+                    <main
+                        id="workspace-content"
+                        className="flex flex-1 flex-col px-4 md:px-8 xl:px-10 2xl:px-16 print:p-0"
                     >
-                        <Plus className="size-5" />
-                        <span className="hidden sm:inline">PRD baru</span>
-                    </button>
-                ) : null}
+                        {error ? (
+                            <div
+                                role="alert"
+                                className="mx-auto mt-6 w-full max-w-[760px] rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive print:hidden"
+                            >
+                                {error}
+                            </div>
+                        ) : null}
+
+                        {stage === 'idea' ? (
+                            <IdeaStage
+                                idea={idea}
+                                model={model}
+                                models={aiModels}
+                                areModelsLoading={areModelsLoading}
+                                modelError={modelError}
+                                isLoading={isLoading}
+                                onIdeaChange={setIdea}
+                                onModelChange={setSelectedModel}
+                                onStart={startInterview}
+                            />
+                        ) : null}
+
+                        {stage === 'interview' ? (
+                            <InterviewStage
+                                idea={idea}
+                                model={model}
+                                answer={answer}
+                                selectedExamples={selectedExamples}
+                                messages={interviewMessages}
+                                activeQuestionId={activeQuestion?.id ?? null}
+                                isLoading={isLoading}
+                                readiness={readiness}
+                                hasPrd={Boolean(prd.trim())}
+                                transcriptEndRef={transcriptEndRef}
+                                onAnswerChange={setAnswer}
+                                onToggleExample={toggleExample}
+                                onSubmitAnswer={submitAnswer}
+                                onGenerate={generatePrd}
+                                onBackToPrd={() => setStage('prd')}
+                            />
+                        ) : null}
+
+                        {stage === 'prd' ? (
+                            <PrdStage
+                                prd={streamingPrd ?? prd}
+                                isStreaming={streamingPrd !== null}
+                                isLoading={isLoading}
+                                lastUsage={lastUsage}
+                                prdId={currentPrdId}
+                                updatedAt={
+                                    history.find(
+                                        (item) => item.id === currentPrdId,
+                                    )?.updated_at ??
+                                    current?.updated_at ??
+                                    null
+                                }
+                                versions={versions}
+                                completeness={completeness}
+                                onRestoreVersion={restoreVersion}
+                                onComplete={completePrd}
+                                onCopy={copyPrd}
+                                onExport={exportMarkdown}
+                                onPrint={printPrd}
+                            />
+                        ) : null}
+                    </main>
+
+                    {stage === 'interview' ? (
+                        <InterviewPanel
+                            model={model}
+                            models={aiModels}
+                            areModelsLoading={areModelsLoading}
+                            modelError={modelError}
+                            quota={quota}
+                            answeredQuestions={answeredQuestions}
+                            readiness={readiness}
+                            hasPrd={Boolean(prd.trim())}
+                            isLoading={isLoading}
+                            onModelChange={setSelectedModel}
+                            onGenerate={generatePrd}
+                        />
+                    ) : null}
+
+                    {stage === 'prd' ? (
+                        <PrdPanel
+                            prd={streamingPrd ?? prd}
+                            isStreaming={streamingPrd !== null}
+                            isLoading={isLoading}
+                            revision={revision}
+                            onRevisionChange={setRevision}
+                            onRequestRevision={requestRevision}
+                            onRegenerate={generatePrd}
+                            onBackToInterview={() => setStage('interview')}
+                        />
+                    ) : null}
+                </div>
             </div>
         </>
     );

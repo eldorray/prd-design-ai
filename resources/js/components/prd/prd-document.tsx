@@ -11,14 +11,15 @@ function PrdTable({ rows }: { rows: string[][] }) {
     const [header, ...body] = rows;
 
     return (
-        <div className="border-border overflow-x-auto rounded-lg border">
-            <table className="w-full text-left text-sm">
-                <thead className="bg-muted/50">
+        <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-[15px]">
+                <thead>
                     <tr>
                         {header.map((cell, index) => (
                             <th
                                 key={index}
-                                className="whitespace-nowrap px-3 py-2 font-medium"
+                                scope="col"
+                                className="border-b border-foreground py-2 pr-4 align-bottom label-mono whitespace-nowrap last:pr-0"
                             >
                                 {cleanPrdText(cell)}
                             </th>
@@ -27,14 +28,11 @@ function PrdTable({ rows }: { rows: string[][] }) {
                 </thead>
                 <tbody>
                     {body.map((row, rowIndex) => (
-                        <tr
-                            key={rowIndex}
-                            className="border-border/60 border-t"
-                        >
+                        <tr key={rowIndex}>
                             {row.map((cell, cellIndex) => (
                                 <td
                                     key={cellIndex}
-                                    className="text-muted-foreground px-3 py-2"
+                                    className="border-b py-2.5 pr-4 align-top leading-normal first:font-medium last:pr-0"
                                 >
                                     {cleanPrdText(cell)}
                                 </td>
@@ -49,13 +47,16 @@ function PrdTable({ rows }: { rows: string[][] }) {
 
 function PrdChecklist({ items }: { items: string[] }) {
     return (
-        <ul className="space-y-1.5">
+        <ul className="flex flex-col gap-2">
             {items.map((item, index) => (
                 <li
                     key={index}
-                    className="text-muted-foreground flex items-start gap-2.5 text-sm leading-6"
+                    className="flex items-start gap-3 text-[15px] leading-relaxed"
                 >
-                    <span className="border-border bg-background mt-1.5 size-3.5 shrink-0 rounded border" />
+                    <span
+                        aria-hidden="true"
+                        className="mt-[5px] size-3.5 shrink-0 rounded-[3px] border border-input bg-background"
+                    />
                     <span>{cleanPrdText(item)}</span>
                 </li>
             ))}
@@ -125,9 +126,9 @@ export function PrdDiagram({
     const showDiagram = svg !== null && !showCode;
 
     return (
-        <div className="border-border bg-muted/30 break-inside-avoid rounded-lg border">
-            <div className="border-border/60 flex items-center justify-between border-b px-3 py-1.5 print:hidden">
-                <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+        <div className="break-inside-avoid overflow-hidden rounded-lg border bg-background">
+            <div className="flex items-center justify-between gap-3 border-b py-1 pr-1 pl-3 print:hidden">
+                <span className="label-mono">
                     {isMermaid
                         ? `Diagram ${index + 1} · Mermaid`
                         : `Kode · ${language || 'teks'}`}
@@ -139,7 +140,7 @@ export function PrdDiagram({
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowCode((value) => !value)}
-                            className="h-7 px-2 text-xs"
+                            className="h-7 px-2 text-xs font-normal"
                         >
                             {showCode ? (
                                 <Network className="size-3.5" />
@@ -154,7 +155,7 @@ export function PrdDiagram({
                         variant="ghost"
                         size="sm"
                         onClick={handleCopy}
-                        className="h-7 px-2 text-xs"
+                        className="h-7 px-2 text-xs font-normal"
                     >
                         {copied ? (
                             <Check className="size-3.5" />
@@ -169,21 +170,21 @@ export function PrdDiagram({
                 // Mermaid output rendered with securityLevel "strict", which
                 // sanitizes the SVG before it reaches the page.
                 <div
-                    className="overflow-x-auto rounded-b-lg bg-white p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
+                    className="overflow-x-auto bg-white p-4 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
                     dangerouslySetInnerHTML={{ __html: svg }}
                 />
             ) : (
-                <pre className="text-foreground overflow-x-auto p-3 text-xs leading-5">
+                <pre className="overflow-x-auto p-4 font-mono text-xs leading-5 text-foreground">
                     <code>{code}</code>
                 </pre>
             )}
             {isMermaid && !closed ? (
-                <p className="text-muted-foreground border-border/60 border-t px-3 py-1.5 text-xs">
-                    Diagram sedang ditulis...
+                <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
+                    Diagram belum selesai ditulis.
                 </p>
             ) : null}
             {failed ? (
-                <p className="text-muted-foreground border-border/60 border-t px-3 py-1.5 text-xs">
+                <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
                     Sintaks diagram belum valid, jadi ditampilkan sebagai kode.
                 </p>
             ) : null}
@@ -211,7 +212,7 @@ export function PrdSectionContent({ items }: { items: PrdSectionItem[] }) {
     }, [items]);
 
     return (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 flex flex-col gap-4">
             {items.map((item, index) => {
                 if (item.kind === 'diagram') {
                     return (
@@ -255,7 +256,7 @@ function PrdTextBlock({ lines }: { lines: string[] }) {
     const blocks = parsePrdBlocks(lines);
 
     return (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-4">
             {blocks.map((block, index) => {
                 if (block.type === 'table') {
                     return <PrdTable key={index} rows={block.rows} />;
@@ -266,7 +267,7 @@ function PrdTextBlock({ lines }: { lines: string[] }) {
                 }
 
                 return (
-                    <div key={index} className="space-y-2">
+                    <div key={index} className="flex flex-col gap-2">
                         {block.lines.map((line, lineIndex) => (
                             <PrdLine key={lineIndex} line={line} />
                         ))}
@@ -282,7 +283,7 @@ function PrdLine({ line }: { line: string }) {
 
     if (/^#{3,}\s+/.test(line)) {
         return (
-            <h4 className="pt-2 text-sm font-semibold">
+            <h4 className="pt-2 text-[15px] font-semibold">
                 {cleanPrdText(line.replace(/^#{3,}\s+/, ''))}
             </h4>
         );
@@ -294,7 +295,7 @@ function PrdLine({ line }: { line: string }) {
         /^.{2,60}:$/.test(cleanLine)
     ) {
         return (
-            <h4 className="pt-2 text-sm font-semibold">
+            <h4 className="pt-2 text-[15px] font-semibold">
                 {cleanLine.replace(/:$/, '')}
             </h4>
         );
@@ -302,22 +303,28 @@ function PrdLine({ line }: { line: string }) {
 
     if (/^[-*]\s+/.test(line)) {
         return (
-            <div className="text-muted-foreground flex gap-2 text-sm leading-6">
-                <span className="bg-primary mt-2 size-1.5 shrink-0 rounded-full" />
+            <div className="flex gap-3 text-base leading-relaxed">
+                <span
+                    aria-hidden="true"
+                    className="mt-[11px] size-1 shrink-0 rounded-full bg-muted-foreground"
+                />
                 <span>{cleanPrdText(line.replace(/^[-*]\s+/, ''))}</span>
             </div>
         );
     }
 
-    if (/^\d+\.\s+/.test(line)) {
+    const ordinal = line.match(/^(\d+)\.\s+/);
+
+    if (ordinal) {
         return (
-            <p className="text-muted-foreground text-sm leading-6">
-                {cleanPrdText(line.replace(/^\d+\.\s+/, ''))}
-            </p>
+            <div className="flex gap-3 text-base leading-relaxed">
+                <span className="min-w-4 shrink-0 pt-[3px] font-mono text-xs text-muted-foreground">
+                    {ordinal[1]}.
+                </span>
+                <span>{cleanPrdText(line.slice(ordinal[0].length))}</span>
+            </div>
         );
     }
 
-    return (
-        <p className="text-muted-foreground text-sm leading-6">{cleanLine}</p>
-    );
+    return <p className="text-base leading-relaxed">{cleanLine}</p>;
 }

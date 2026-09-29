@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Support\AiQuota;
+use App\Support\PrdTemplate;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use Illuminate\Http\Client\ConnectionException;
@@ -279,7 +280,7 @@ test('generate system prompt includes the full document structure', function () 
         $prompt = $request['messages'][0]['content'];
 
         return str_contains($prompt, 'jawaban interview')
-            && str_contains($prompt, '2500 kata')
+            && str_contains($prompt, PrdTemplate::MAX_WORDS.' kata')
             && str_contains($prompt, '## Diagram ERD')
             && str_contains($prompt, 'erDiagram')
             && str_contains($prompt, '## API Endpoints')

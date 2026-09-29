@@ -14,11 +14,14 @@ export function ModelSelect({
     model,
     models,
     onModelChange,
+    id,
     className,
 }: {
     model: Model;
     models: AiModelOption[];
     onModelChange: (model: Model) => void;
+    /** Lets a visible <label htmlFor> point at the trigger. */
+    id?: string;
     className?: string;
 }) {
     return (
@@ -28,6 +31,7 @@ export function ModelSelect({
             disabled={models.length === 0}
         >
             <SelectTrigger
+                id={id}
                 className={cn('h-9 w-[190px] text-xs', className)}
                 aria-label="Pilih model AI"
             >

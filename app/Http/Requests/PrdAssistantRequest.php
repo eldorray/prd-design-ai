@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Support\AiProvider;
+use App\Support\PrdTemplate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +26,10 @@ class PrdAssistantRequest extends FormRequest
     {
         return [
             'model' => ['required', 'string', Rule::in(AiProvider::models())],
-            'mode' => ['required', 'string', Rule::in(['interview', 'generate', 'refine'])],
+            'mode' => ['required', 'string', Rule::in(['interview', 'generate', 'refine', 'complete'])],
+            // "complete" writes only these sections into the draft.
+            'missing_sections' => ['required_if:mode,complete', 'array', 'max:'.count(PrdTemplate::SECTIONS)],
+            'missing_sections.*' => ['string', Rule::in(PrdTemplate::SECTIONS)],
             'idea' => ['nullable', 'string', 'max:50000'],
             'draft' => ['nullable', 'string', 'max:50000'],
             'messages' => ['required', 'array', 'min:1', 'max:30'],

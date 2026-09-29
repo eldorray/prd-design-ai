@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePrdRequest;
 use App\Models\Prd;
 use App\Models\PrdVersion;
+use App\Models\User;
+use App\Support\PrdTemplate;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +47,27 @@ class PrdController extends Controller
                         'characters' => (int) $version->getAttribute('characters'),
                     ])
                 : [],
+            'quota' => $this->quota($user),
+            // Finished documents are checked against this list for gaps.
+            'prdSections' => PrdTemplate::SECTIONS,
         ]);
+    }
+
+    /**
+     * This month's token usage for the quota meter. Admins skip the balance
+     * check in AiQuota::reserve, so they have no limit to show.
+     *
+     * @return array{used: int, limit: int|null, resets_at: string}
+     */
+    private function quota(User $user): array
+    {
+        return [
+            'used' => (int) $user->aiUsageLogs()->currentPeriod()->sum('total_tokens'),
+            'limit' => $user->isAdmin() ? null : (int) $user->token_quota,
+            // The currentPeriod scope counts from the first of this month, so
+            // the next period starts on the first of next month.
+            'resets_at' => now()->startOfMonth()->addMonthNoOverflow()->toIso8601String(),
+        ];
     }
 
     /**

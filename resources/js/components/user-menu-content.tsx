@@ -67,7 +67,7 @@ export function UserMenuContent({ user }: Props) {
                             href="/admin/dashboard"
                             onClick={cleanup}
                         >
-                            <Shield className="mr-2 h-4 w-4 text-amber-500" />
+                            <Shield className="mr-2 h-4 w-4" />
                             Admin Dashboard
                         </Link>
                     </DropdownMenuItem>

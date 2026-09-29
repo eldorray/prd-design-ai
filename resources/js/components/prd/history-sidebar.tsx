@@ -1,10 +1,25 @@
-import { PanelLeft, Plus, Trash2 } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import {
+    FileText,
+    LayoutTemplate,
+    PanelLeft,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { UserMenu } from '@/components/workspace/user-menu';
 import { cn } from '@/lib/utils';
-import type { PrdSummary } from '@/types';
+import { dashboard, home } from '@/routes';
+import { index as designIndex } from '@/routes/design';
+import type { PrdSummary, User } from '@/types';
 
+/**
+ * The workspace's left rail: always visible from lg up, an overlay drawer
+ * below it (toggled from the top bar).
+ */
 export function HistorySidebar({
+    user,
     history,
     currentPrdId,
     open,
@@ -13,6 +28,7 @@ export function HistorySidebar({
     onOpen,
     onDelete,
 }: {
+    user: User;
     history: PrdSummary[];
     currentPrdId: string | null;
     open: boolean;
@@ -27,56 +43,87 @@ export function HistorySidebar({
                 <button
                     type="button"
                     aria-label="Tutup riwayat"
-                    className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+                    className="fixed inset-0 z-30 bg-foreground/40 lg:hidden print:hidden"
                     onClick={onClose}
                 />
             ) : null}
 
             <aside
                 className={cn(
-                    'm3-history-drawer fixed inset-y-0 left-0 z-40 flex flex-col transition-all duration-300 ease-in-out lg:static lg:z-auto',
-                    open
-                        ? 'w-72 translate-x-0'
-                        : 'w-72 -translate-x-full lg:w-0 lg:translate-x-0 lg:overflow-hidden lg:border-transparent',
+                    'fixed inset-y-0 left-0 z-40 flex w-72 flex-col gap-6 border-r bg-background px-4 py-5 transition-transform duration-300 ease-in-out lg:w-[248px] lg:translate-x-0 print:hidden',
+                    open ? 'translate-x-0' : '-translate-x-full',
                 )}
             >
-                <div className="flex h-full w-72 shrink-0 flex-col">
-                    <div className="flex h-16 shrink-0 items-center justify-between px-4">
-                        <div>
-                            <span className="text-sm font-medium">Dokumen</span>
-                            <p className="text-muted-foreground text-xs">
-                                Riwayat PRD
-                            </p>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Tutup riwayat"
-                            onClick={onClose}
-                        >
-                            <PanelLeft className="size-4" />
-                        </Button>
-                    </div>
+                <div className="flex items-center justify-between gap-2">
+                    <Link
+                        href={home()}
+                        className="px-2.5 pt-1 font-serif text-[28px] leading-none"
+                    >
+                        PRD<span className="text-brand italic">.ai</span>
+                    </Link>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="lg:hidden"
+                        aria-label="Tutup riwayat"
+                        onClick={onClose}
+                    >
+                        <PanelLeft className="size-4" />
+                    </Button>
+                </div>
 
-                    <div className="p-3">
-                        <Button
-                            type="button"
-                            className="m3-new-document h-12 w-full justify-start"
-                            onClick={onNew}
-                        >
-                            <Plus className="size-4" />
-                            PRD baru
-                        </Button>
-                    </div>
+                <nav
+                    aria-label="Navigasi utama"
+                    className="flex flex-col gap-0.5"
+                >
+                    <Link
+                        href={dashboard()}
+                        aria-current="page"
+                        className="flex h-10 items-center gap-2.5 rounded-lg bg-secondary px-2.5 text-sm font-medium"
+                    >
+                        <FileText className="size-[18px]" strokeWidth={1.75} />
+                        PRD Generator
+                    </Link>
+                    <Link
+                        href={designIndex()}
+                        className="flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+                    >
+                        <LayoutTemplate
+                            className="size-[18px]"
+                            strokeWidth={1.75}
+                        />
+                        Design Studio
+                    </Link>
+                </nav>
 
-                    <div className="flex-1 overflow-y-auto px-3 pb-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full bg-card"
+                    onClick={onNew}
+                >
+                    <Plus className="size-4" />
+                    PRD baru
+                </Button>
+
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <span
+                        id="prd-history-label"
+                        className="px-2.5 pb-2 label-mono"
+                    >
+                        Riwayat PRD
+                    </span>
+                    <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
                         {history.length === 0 ? (
-                            <p className="text-muted-foreground px-1 py-6 text-center text-xs">
+                            <p className="px-2.5 py-2 text-[13px] leading-normal text-muted-foreground">
                                 Belum ada PRD tersimpan. Buat yang pertama.
                             </p>
                         ) : (
-                            <ul className="space-y-1">
+                            <ul
+                                aria-labelledby="prd-history-label"
+                                className="flex flex-col gap-0.5"
+                            >
                                 {history.map((item) => {
                                     const isActive = item.id === currentPrdId;
 
@@ -88,19 +135,26 @@ export function HistorySidebar({
                                             <button
                                                 type="button"
                                                 onClick={() => onOpen(item.id)}
+                                                aria-current={
+                                                    isActive
+                                                        ? 'true'
+                                                        : undefined
+                                                }
                                                 className={cn(
-                                                    'm3-history-item min-h-14 w-full px-3 py-2 pr-11 text-left transition',
-                                                    isActive ? 'is-active' : '',
+                                                    'flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-2 pr-12 text-left transition-colors lg:pr-10',
+                                                    isActive
+                                                        ? 'bg-secondary'
+                                                        : 'hover:bg-secondary/60',
                                                 )}
                                             >
-                                                <p className="truncate text-sm font-medium">
+                                                <span className="truncate text-sm leading-snug">
                                                     {item.title}
-                                                </p>
-                                                <p className="text-muted-foreground mt-0.5 text-xs">
+                                                </span>
+                                                <span className="font-mono text-[11px] text-muted-foreground">
                                                     {formatTimestamp(
                                                         item.updated_at,
                                                     )}
-                                                </p>
+                                                </span>
                                             </button>
                                             <button
                                                 type="button"
@@ -108,7 +162,7 @@ export function HistorySidebar({
                                                 onClick={() =>
                                                     onDelete(item.id)
                                                 }
-                                                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive absolute right-1 top-1.5 flex size-11 items-center justify-center rounded-full opacity-0 transition focus-visible:opacity-100 group-hover:opacity-100"
+                                                className="absolute top-1/2 right-1 flex size-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 lg:size-8"
                                             >
                                                 <Trash2 className="size-3.5" />
                                             </button>
@@ -118,6 +172,15 @@ export function HistorySidebar({
                             </ul>
                         )}
                     </div>
+                </div>
+
+                <div className="-mx-1 border-t pt-3">
+                    <UserMenu
+                        user={user}
+                        variant="rail"
+                        showChevron
+                        dataTest="user-menu-button"
+                    />
                 </div>
             </aside>
         </>
