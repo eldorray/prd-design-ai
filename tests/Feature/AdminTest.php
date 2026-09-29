@@ -3,7 +3,9 @@
 use App\Models\AiUsageLog;
 use App\Models\Prd;
 use App\Models\User;
+use App\Models\WaitlistEntry;
 use App\Support\AiQuota;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 test('guests are redirected from admin dashboard to login page', function () {
@@ -258,7 +260,7 @@ test('the dashboard totals each account token usage', function () {
         ->get(route('admin.dashboard'))
         ->assertInertia(fn ($page) => $page
             ->where(
-                'users',
+                'users.data',
                 fn ($users) => collect($users)->firstWhere('id', $user->id)['used_tokens'] === 200,
             ),
         );
@@ -278,7 +280,7 @@ test('the dashboard shows only this month usage against the monthly quota', func
         ->get(route('admin.dashboard'))
         ->assertInertia(fn ($page) => $page
             ->where(
-                'users',
+                'users.data',
                 fn ($users) => collect($users)->firstWhere('id', $user->id)['used_tokens'] === 40,
             )
             ->where('analytics.total_tokens', 540),
@@ -298,4 +300,85 @@ test('deleting a user keeps their AI spend in the totals', function () {
     expect(User::find($user->id))->toBeNull()
         ->and((int) AiUsageLog::sum('total_tokens'))->toBe(900)
         ->and(AiUsageLog::first()->user_id)->toBeNull();
+});
+
+test('admins can create a user from the dashboard', function () {
+    WaitlistEntry::create(['email' => 'budi@example.com', 'name' => 'Budi']);
+
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->post(route('admin.users.store'), [
+            'name' => 'Budi',
+            'email' => 'budi@example.com',
+            'password' => 'Rahasia-Kuat-2026!',
+            'role' => 'user',
+            'token_quota' => 50000,
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $user = User::where('email', 'budi@example.com')->first();
+
+    expect($user)->not->toBeNull()
+        ->and($user->role)->toBe('user')
+        ->and($user->token_quota)->toBe(50000)
+        ->and(Hash::check('Rahasia-Kuat-2026!', $user->password))->toBeTrue()
+        // The account now exists, so its waitlist entry has done its job.
+        ->and(WaitlistEntry::count())->toBe(0);
+});
+
+test('creating a user rejects an email that is already taken', function () {
+    User::factory()->create(['email' => 'budi@example.com']);
+
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->post(route('admin.users.store'), [
+            'name' => 'Budi',
+            'email' => 'budi@example.com',
+            'password' => 'Rahasia-Kuat-2026!',
+            'role' => 'user',
+            'token_quota' => 0,
+        ])
+        ->assertSessionHasErrors('email');
+});
+
+test('non-admins cannot create users', function () {
+    $this->actingAs(User::factory()->create(['role' => 'user']))
+        ->post(route('admin.users.store'), [
+            'name' => 'Budi',
+            'email' => 'budi@example.com',
+            'password' => 'Rahasia-Kuat-2026!',
+            'role' => 'admin',
+            'token_quota' => 0,
+        ])
+        ->assertForbidden();
+
+    expect(User::where('email', 'budi@example.com')->exists())->toBeFalse();
+});
+
+test('the admin user list is paginated on the server', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'name' => 'Aaa Admin']);
+    User::factory()->count(24)->create();
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard', ['page' => 2]))
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 5)
+            ->where('users.total', 25)
+            ->where('users.current_page', 2),
+        );
+});
+
+test('the admin user list filters by search, role and status on the server', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $budi = User::factory()->create(['name' => 'Budi Santoso', 'status' => 'blocked']);
+    User::factory()->create(['name' => 'Budi Lain', 'status' => 'active']);
+    User::factory()->create(['name' => 'Siti']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard', ['search' => 'budi', 'status' => 'blocked']))
+        ->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $budi->id)
+            ->where('filters.search', 'budi')
+            ->where('filters.status', 'blocked'),
+        );
 });

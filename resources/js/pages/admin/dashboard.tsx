@@ -1,17 +1,22 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import {
+    ChevronLeft,
+    ChevronRight,
     Cpu,
     Edit2,
     FileText,
+    Inbox,
     LayoutTemplate,
     Search,
     Shield,
     Trash2,
+    UserPlus,
     Users,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,22 +61,68 @@ type Analytics = {
     total_tokens: number;
     total_prds: number;
     total_designs: number;
+    waitlist_count: number;
+};
+
+type Paginated<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
+type RoleFilter = 'all' | 'user' | 'admin';
+type StatusFilter = 'all' | 'active' | 'blocked';
+
+type Filters = {
+    search: string;
+    role: RoleFilter;
+    status: StatusFilter;
+};
+
+type WaitlistEntry = {
+    id: string;
+    email: string;
+    name: string | null;
+    note: string | null;
+    created_at: string;
 };
 
 type Props = {
     auth: Auth;
-    users: DashboardUser[];
+    users: Paginated<DashboardUser>;
+    filters: Filters;
+    waitlist: WaitlistEntry[];
     analytics: Analytics;
 };
 
-export default function Dashboard({ auth, users, analytics }: Props) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'admin'>(
-        'all',
+export default function Dashboard({
+    auth,
+    users,
+    filters,
+    waitlist,
+    analytics,
+}: Props) {
+    const [searchQuery, setSearchQuery] = useState(filters.search);
+    const [roleFilter, setRoleFilter] = useState<RoleFilter>(filters.role);
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+        filters.status,
     );
-    const [statusFilter, setStatusFilter] = useState<
-        'all' | 'active' | 'blocked'
-    >('all');
+    const isFirstFilterRun = useRef(true);
+
+    // Creating user state
+    const [isCreating, setIsCreating] = useState(false);
+    const createForm = useForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'user' as 'user' | 'admin',
+        token_quota: '50000',
+    });
 
     // Editing user state
     const [editingUser, setEditingUser] = useState<DashboardUser | null>(null);
@@ -88,19 +139,74 @@ export default function Dashboard({ auth, users, analytics }: Props) {
     );
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const filteredUsers = useMemo(() => {
-        return users.filter((u) => {
-            const matchesSearch =
-                u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                u.email.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesRole =
-                roleFilter === 'all' ? true : u.role === roleFilter;
-            const matchesStatus =
-                statusFilter === 'all' ? true : u.status === statusFilter;
+    // Filtering and paging happen on the server; the search box is debounced
+    // so typing does not fire a request per keystroke.
+    useEffect(() => {
+        if (isFirstFilterRun.current) {
+            isFirstFilterRun.current = false;
 
-            return matchesSearch && matchesRole && matchesStatus;
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(
+                '/admin/dashboard',
+                {
+                    search: searchQuery || undefined,
+                    role: roleFilter === 'all' ? undefined : roleFilter,
+                    status: statusFilter === 'all' ? undefined : statusFilter,
+                },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, roleFilter, statusFilter]);
+
+    const goToPage = (url: string | null) => {
+        if (url) {
+            router.get(url, {}, { preserveState: true, preserveScroll: true });
+        }
+    };
+
+    const openCreate = (entry?: WaitlistEntry) => {
+        createForm.reset();
+        createForm.clearErrors();
+
+        if (entry) {
+            createForm.setData((data) => ({
+                ...data,
+                name: entry.name ?? entry.email.split('@')[0],
+                email: entry.email,
+            }));
+        }
+
+        setIsCreating(true);
+    };
+
+    const handleCreate = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        createForm.transform((data) => ({
+            ...data,
+            token_quota: parseInt(data.token_quota, 10),
+        }));
+        createForm.post('/admin/users', {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsCreating(false);
+                createForm.reset();
+            },
         });
-    }, [users, searchQuery, roleFilter, statusFilter]);
+    };
+
+    const handleRemoveWaitlist = (entry: WaitlistEntry) => {
+        router.delete(`/admin/waitlist/${entry.id}`, {
+            preserveScroll: true,
+            onSuccess: () =>
+                toast.success(`${entry.email} dihapus dari daftar tunggu.`),
+        });
+    };
 
     const handleEditClick = (user: DashboardUser) => {
         setEditingUser(user);
@@ -285,10 +391,14 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                             />
                         </div>
                         <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => openCreate()}>
+                                <UserPlus className="h-4 w-4" />
+                                Tambah Pengguna
+                            </Button>
                             <Select
                                 value={roleFilter}
                                 onValueChange={(val) =>
-                                    setRoleFilter(val as any)
+                                    setRoleFilter(val as RoleFilter)
                                 }
                             >
                                 <SelectTrigger className="w-[140px]">
@@ -306,7 +416,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                             <Select
                                 value={statusFilter}
                                 onValueChange={(val) =>
-                                    setStatusFilter(val as any)
+                                    setStatusFilter(val as StatusFilter)
                                 }
                             >
                                 <SelectTrigger className="w-[140px]">
@@ -344,7 +454,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-transparent">
-                                {filteredUsers.length === 0 ? (
+                                {users.data.length === 0 ? (
                                     <tr>
                                         <td
                                             colSpan={5}
@@ -354,7 +464,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredUsers.map((user) => {
+                                    users.data.map((user) => {
                                         const quotaPercent = Math.min(
                                             100,
                                             Math.round(
@@ -495,8 +605,260 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between text-sm text-neutral-500">
+                        <span>
+                            {users.total === 0
+                                ? '0 pengguna'
+                                : `${users.from}–${users.to} dari ${users.total} pengguna`}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!users.prev_page_url}
+                                onClick={() => goToPage(users.prev_page_url)}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Sebelumnya
+                            </Button>
+                            <span>
+                                {users.current_page} / {users.last_page}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!users.next_page_url}
+                                onClick={() => goToPage(users.next_page_url)}
+                            >
+                                Berikutnya
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
+
+            {/* Waitlist */}
+            <Card className="border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                        <Inbox className="h-5 w-5" />
+                        Daftar Tunggu ({analytics.waitlist_count})
+                    </CardTitle>
+                    <CardDescription>
+                        Pengunjung yang meminta akses dari halaman depan. Buat
+                        akun untuk mereka, lalu kabari lewat email.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {waitlist.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-neutral-400">
+                            Belum ada yang mendaftar.
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+                            <table className="w-full text-left text-sm text-neutral-700 dark:text-neutral-300">
+                                <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+                                    <tr>
+                                        <th className="px-6 py-4">
+                                            Nama & Email
+                                        </th>
+                                        <th className="px-6 py-4">Catatan</th>
+                                        <th className="px-6 py-4">Tanggal</th>
+                                        <th className="px-6 py-4 text-right">
+                                            Aksi
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                                    {waitlist.map((entry) => (
+                                        <tr key={entry.id}>
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-neutral-900 dark:text-neutral-100">
+                                                    {entry.name ?? '—'}
+                                                </div>
+                                                <div className="text-xs text-neutral-400">
+                                                    {entry.email}
+                                                </div>
+                                            </td>
+                                            <td className="max-w-sm whitespace-pre-line px-6 py-4 text-xs">
+                                                {entry.note ?? '—'}
+                                            </td>
+                                            <td className="px-6 py-4 text-xs text-neutral-400">
+                                                {new Date(
+                                                    entry.created_at,
+                                                ).toLocaleDateString('id-ID')}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            openCreate(entry)
+                                                        }
+                                                    >
+                                                        <UserPlus className="h-4 w-4" />
+                                                        Buat akun
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-neutral-400 hover:text-red-600"
+                                                        aria-label={`Hapus ${entry.email} dari daftar tunggu`}
+                                                        onClick={() =>
+                                                            handleRemoveWaitlist(
+                                                                entry,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Create User Modal */}
+            <Dialog open={isCreating} onOpenChange={setIsCreating}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleCreate}>
+                        <DialogHeader>
+                            <DialogTitle>Tambah Pengguna</DialogTitle>
+                            <DialogDescription>
+                                Registrasi publik ditutup. Sampaikan email dan
+                                password awal ke pengguna secara langsung.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-name">Nama</Label>
+                                <Input
+                                    id="create-name"
+                                    value={createForm.data.name}
+                                    onChange={(e) =>
+                                        createForm.setData(
+                                            'name',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                />
+                                <InputError message={createForm.errors.name} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-email">Email</Label>
+                                <Input
+                                    id="create-email"
+                                    type="email"
+                                    value={createForm.data.email}
+                                    onChange={(e) =>
+                                        createForm.setData(
+                                            'email',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                />
+                                <InputError message={createForm.errors.email} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-password">
+                                    Password awal
+                                </Label>
+                                <Input
+                                    id="create-password"
+                                    type="text"
+                                    autoComplete="new-password"
+                                    value={createForm.data.password}
+                                    onChange={(e) =>
+                                        createForm.setData(
+                                            'password',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                />
+                                <InputError
+                                    message={createForm.errors.password}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-role">Role</Label>
+                                <Select
+                                    value={createForm.data.role}
+                                    onValueChange={(val) =>
+                                        createForm.setData(
+                                            'role',
+                                            val as 'user' | 'admin',
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger id="create-role">
+                                        <SelectValue placeholder="Pilih Role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="user">
+                                            User (Normal)
+                                        </SelectItem>
+                                        <SelectItem value="admin">
+                                            Admin (Akses Penuh)
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={createForm.errors.role} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-quota">
+                                    Kuota Token AI per Bulan
+                                </Label>
+                                <Input
+                                    id="create-quota"
+                                    type="number"
+                                    min={0}
+                                    value={createForm.data.token_quota}
+                                    onChange={(e) =>
+                                        createForm.setData(
+                                            'token_quota',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                />
+                                <InputError
+                                    message={createForm.errors.token_quota}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsCreating(false)}
+                                disabled={createForm.processing}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={createForm.processing}
+                            >
+                                {createForm.processing
+                                    ? 'Membuat...'
+                                    : 'Buat Akun'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit User Modal */}
             <Dialog
@@ -521,7 +883,7 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                                 <Select
                                     value={editRole}
                                     onValueChange={(val) =>
-                                        setEditRole(val as any)
+                                        setEditRole(val as 'user' | 'admin')
                                     }
                                 >
                                     <SelectTrigger>
@@ -543,7 +905,9 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                                 <Select
                                     value={editStatus}
                                     onValueChange={(val) =>
-                                        setEditStatus(val as any)
+                                        setEditStatus(
+                                            val as 'active' | 'blocked',
+                                        )
                                     }
                                 >
                                     <SelectTrigger>
@@ -608,10 +972,10 @@ export default function Dashboard({ auth, users, analytics }: Props) {
                             <span className="font-semibold text-neutral-900 dark:text-neutral-100">
                                 {deletingUser?.name}
                             </span>
-                            ? Tindakan ini bersifat permanen dan seluruh dokumen
-                            PRD, Mockups Design, serta riwayat token milik
-                            pengguna ini akan dihapus secara total dari
-                            database.
+                            ? Tindakan ini bersifat permanen: seluruh dokumen
+                            PRD dan Mockups Design milik pengguna ini ikut
+                            dihapus. Riwayat pemakaian token tetap disimpan agar
+                            total biaya AI tetap akurat.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-4">

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import WaitlistForm from '@/components/waitlist-form';
 import { cn } from '@/lib/utils';
 import { dashboard, login } from '@/routes';
 import type { Auth } from '@/types';
@@ -71,7 +72,6 @@ const PRD_SECTIONS = [
 
 export default function Welcome() {
     const { auth } = usePage<PageProps>().props;
-    const primaryHref = auth.user ? dashboard() : login();
 
     return (
         <>
@@ -154,39 +154,53 @@ export default function Welcome() {
                                 className="animate-rise mt-9 flex flex-wrap justify-center gap-3"
                                 style={{ animationDelay: '0.15s' }}
                             >
-                                <Button
-                                    asChild
-                                    size="lg"
-                                    className="shadow-primary/25 group rounded-full px-7 shadow-xl"
-                                >
-                                    <Link href={primaryHref}>
-                                        {auth.user
-                                            ? 'Buka workspace'
-                                            : 'Masuk ke workspace'}
-                                        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                                    </Link>
-                                </Button>
-                                <Button
-                                    asChild
-                                    size="lg"
-                                    variant="outline"
-                                    className="border-border/70 bg-card/50 rounded-full px-7 backdrop-blur-md"
-                                >
-                                    <Link
-                                        href={auth.user ? dashboard() : login()}
+                                {auth.user ? (
+                                    <Button
+                                        asChild
+                                        size="lg"
+                                        className="shadow-primary/25 group rounded-full px-7 shadow-xl"
                                     >
-                                        <Command className="size-4" />
-                                        Lihat contoh hasil
-                                    </Link>
-                                </Button>
+                                        <Link href={dashboard()}>
+                                            Buka workspace
+                                            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <>
+                                        {/* Registration is closed: visitors
+                                        join the waitlist, and an admin
+                                        creates their account by hand. */}
+                                        <Button
+                                            asChild
+                                            size="lg"
+                                            className="shadow-primary/25 group rounded-full px-7 shadow-xl"
+                                        >
+                                            <a href="#akses">
+                                                Minta akses
+                                                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                                            </a>
+                                        </Button>
+                                        <Button
+                                            asChild
+                                            size="lg"
+                                            variant="outline"
+                                            className="border-border/70 bg-card/50 rounded-full px-7 backdrop-blur-md"
+                                        >
+                                            <Link href={login()}>
+                                                <Command className="size-4" />
+                                                Sudah punya akun? Masuk
+                                            </Link>
+                                        </Button>
+                                    </>
+                                )}
                             </div>
 
                             <p
                                 className="animate-rise text-muted-foreground mt-4 text-sm"
                                 style={{ animationDelay: '0.18s' }}
                             >
-                                Gratis dimulai · Tanpa kartu kredit · Hasil
-                                dalam hitungan menit
+                                Akses masih terbatas · Daftar tunggu gratis ·
+                                Hasil dalam hitungan menit
                             </p>
 
                             <div
@@ -286,7 +300,10 @@ export default function Welcome() {
                     </section>
 
                     {/* Final CTA */}
-                    <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8 md:pb-28">
+                    <section
+                        id="akses"
+                        className="mx-auto w-full max-w-6xl scroll-mt-24 px-5 pb-20 md:px-8 md:pb-28"
+                    >
                         <div className="border-border/70 bg-card/50 relative overflow-hidden rounded-3xl border px-6 py-14 text-center backdrop-blur-xl md:px-12 md:py-20">
                             <div className="bg-primary/25 pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-[100px]" />
                             <div className="relative">
@@ -297,23 +314,25 @@ export default function Welcome() {
                                     </span>
                                 </h2>
                                 <p className="text-muted-foreground mx-auto mt-4 max-w-xl">
-                                    Mulai wawancara sekarang. Dapatkan dokumen
-                                    spesifikasi PRD dan mockup desain UI yang
-                                    siap pakai.
+                                    {auth.user
+                                        ? 'Mulai wawancara sekarang. Dapatkan dokumen spesifikasi PRD dan mockup desain UI yang siap pakai.'
+                                        : 'Akses sedang dibuka bertahap. Tinggalkan email, kami kabari saat akunmu siap.'}
                                 </p>
                                 <div className="mt-8 flex justify-center">
-                                    <Button
-                                        asChild
-                                        size="lg"
-                                        className="shadow-primary/25 group rounded-full px-8 shadow-xl"
-                                    >
-                                        <Link href={primaryHref}>
-                                            {auth.user
-                                                ? 'Buka workspace'
-                                                : 'Masuk ke workspace'}
-                                            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-                                        </Link>
-                                    </Button>
+                                    {auth.user ? (
+                                        <Button
+                                            asChild
+                                            size="lg"
+                                            className="shadow-primary/25 group rounded-full px-8 shadow-xl"
+                                        >
+                                            <Link href={dashboard()}>
+                                                Buka workspace
+                                                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <WaitlistForm />
+                                    )}
                                 </div>
                             </div>
                         </div>

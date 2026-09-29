@@ -64,5 +64,8 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()),
             ];
         });
+
+        // Public, unauthenticated form: keep bots from filling the table.
+        RateLimiter::for('waitlist', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
     }
 }

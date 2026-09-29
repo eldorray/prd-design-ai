@@ -7,8 +7,11 @@ use App\Models\AiUsageLog;
 use App\Models\Design;
 use App\Models\Prd;
 use App\Models\User;
+use App\Models\WaitlistEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,15 +22,24 @@ class AdminController extends Controller
      */
     public function index(Request $request): Response
     {
-        // ponytail: one aggregated query instead of a SUM per row. Still loads
-        // every user at once, which is fine while registration is closed and
-        // accounts are provisioned by hand; paginate if that ever changes.
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'role' => ['nullable', 'in:user,admin'],
+            'status' => ['nullable', 'in:active,blocked'],
+        ]);
+
         $users = User::query()
             // This month's usage, matching what the monthly quota counts.
             ->withSum(['aiUsageLogs as used_tokens' => fn ($query) => $query->currentPeriod()], 'total_tokens')
+            ->when($filters['search'] ?? null, fn ($query, string $search) => $query->where(
+                fn ($query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"),
+            ))
+            ->when($filters['role'] ?? null, fn ($query, string $role) => $query->where('role', $role))
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role', 'token_quota', 'status', 'created_at'])
-            ->map(fn (User $user): array => [
+            ->paginate(20, ['id', 'name', 'email', 'role', 'token_quota', 'status', 'created_at'])
+            ->withQueryString()
+            ->through(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
@@ -43,12 +55,65 @@ class AdminController extends Controller
             'total_tokens' => (int) AiUsageLog::sum('total_tokens'),
             'total_prds' => Prd::count(),
             'total_designs' => Design::count(),
+            'waitlist_count' => WaitlistEntry::count(),
         ];
 
         return Inertia::render('admin/dashboard', [
             'users' => $users,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'role' => $filters['role'] ?? 'all',
+                'status' => $filters['status'] ?? 'all',
+            ],
+            // ponytail: newest 100 only; paginate if the waitlist outgrows that.
+            'waitlist' => WaitlistEntry::query()
+                ->latest()
+                ->limit(100)
+                ->get(['id', 'email', 'name', 'note', 'created_at']),
             'analytics' => $analytics,
         ]);
+    }
+
+    /**
+     * Create an account by hand — registration is closed, so this (and the
+     * `user:create` command) is how people get in.
+     */
+    public function storeUser(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', Password::default()],
+            'role' => ['required', 'in:user,admin'],
+            'token_quota' => ['required', 'integer', 'min:0'],
+        ]);
+
+        $user = new User;
+        $user->name = $validated['name'];
+        $user->email = Str::lower($validated['email']);
+        $user->password = $validated['password'];
+        // Explicit writes: role, quota and status are deliberately not fillable.
+        $user->role = $validated['role'];
+        $user->token_quota = $validated['token_quota'];
+        $user->status = 'active';
+        $user->email_verified_at = now();
+        $user->save();
+
+        WaitlistEntry::where('email', $user->email)->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Akun {$user->email} dibuat."]);
+
+        return redirect()->back();
+    }
+
+    /**
+     * Remove a waitlist entry without creating an account.
+     */
+    public function destroyWaitlistEntry(WaitlistEntry $waitlistEntry): RedirectResponse
+    {
+        $waitlistEntry->delete();
+
+        return redirect()->back();
     }
 
     /**

@@ -8,9 +8,14 @@ use App\Http\Controllers\DesignExportController;
 use App\Http\Controllers\DesignStreamController;
 use App\Http\Controllers\PrdAssistantController;
 use App\Http\Controllers\PrdController;
+use App\Http\Controllers\WaitlistController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::post('waitlist', [WaitlistController::class, 'store'])
+    ->middleware('throttle:waitlist')
+    ->name('waitlist.store');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [PrdController::class, 'index'])->name('dashboard');
@@ -37,8 +42,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('dashboard', [AdminController::class, 'index'])->name('dashboard');
+        Route::post('users', [AdminController::class, 'storeUser'])->name('users.store');
         Route::put('users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
         Route::delete('users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
+        Route::delete('waitlist/{waitlistEntry}', [AdminController::class, 'destroyWaitlistEntry'])->name('waitlist.destroy');
 
         Route::get('ai', [AiSettingController::class, 'index'])->name('ai.index');
         Route::post('ai/providers', [AiSettingController::class, 'storeProvider'])->name('ai.providers.store');
