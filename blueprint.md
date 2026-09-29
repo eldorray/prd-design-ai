@@ -2,8 +2,8 @@
 
 ## Status Dokumen
 - **Versi**: 1.0 (MVP)
-- **Status**: [x] Draf Disetujui | [ ] Pengembangan | [ ] Rilis
-- **Terakhir Diperbarui**: 2026-06-07
+- **Status**: [x] Draf Disetujui | [x] Pengembangan | [ ] Rilis
+- **Terakhir Diperbarui**: 2026-09-29
 
 ---
 
@@ -64,9 +64,12 @@ Kami mengelompokkan fitur aplikasi ke dalam matriks prioritas berikut:
 | **F06** | Design Studio Integration | Tombol "Buat design dari PRD" untuk mengonversi spesifikasi menjadi desain visual HTML/CSS interaktif. | **P1** (MVP+) | [x] Selesai |
 | **F07** | Live Preview Canvas | Canvas visual yang mendukung visualisasi layout dalam mode desktop, tablet, dan mobile. | **P1** (MVP+) | [x] Selesai |
 | **F08** | Code Viewer | Menampilkan kode HTML hasil desain langsung di canvas dengan opsi salin cepat (Copy Code) dan *syntax highlighting*. | **P1** (MVP+) | [x] Selesai |
-| **F09** | Rate Limiting AI | Proteksi API request untuk membatasi penyalahgunaan pemanggilan token AI. | **P1** (MVP+) | [ ] Terencana |
+| **F09** | Rate Limiting AI | Proteksi API request untuk membatasi penyalahgunaan pemanggilan token AI (10 request/menit per user). | **P1** (MVP+) | [x] Selesai |
 | **F10** | Team Sharing & Collaboration| Berbagi link PRD/Mockup kepada pihak eksternal dengan otorisasi read-only. | **P2** (Post-MVP)| [ ] Backlog |
-| **F11** | Token Quota Tracking | Sistem kuota bulanan user untuk memonitor konsumsi API dan integrasi dengan sistem pembayaran (Stripe). | **P2** (Post-MVP)| [ ] Backlog |
+| **F11** | Token Quota Tracking | Kuota token bulanan per user (reset tiap tanggal 1) dengan reservasi sebelum panggilan AI. Integrasi pembayaran (Stripe) belum. | **P2** (Post-MVP)| [x] Kuota selesai · [ ] Pembayaran |
+| **F12** | Waitlist & Provisioning | Pengunjung mendaftar daftar tunggu; admin membuat akun dari dashboard (registrasi publik tetap tertutup). | **P1** (MVP+) | [x] Selesai |
+| **F13** | Streaming & Versi PRD | PRD tampil bertahap saat ditulis (SSE); 20 versi terakhir tersimpan dan bisa dipulihkan (undo refine). | **P1** (MVP+) | [x] Selesai |
+| **F14** | Diagram & Ekspor PDF | Diagram Mermaid dirender langsung di PRD; ekspor PDF lewat print browser. | **P1** (MVP+) | [x] Selesai |
 
 ---
 
@@ -190,7 +193,7 @@ Untuk mengukur performa produk, kami menetapkan tolok ukur kesuksesan yang reali
 - **Tingkat Penyelesaian (Completion Rate)**: Minimal **70%** pengguna yang memulai proses AI Interview berhasil men-generate berkas PRD akhir (tidak berhenti di tengah wawancara).
 - **Efisiensi Onboarding (Time-to-Value)**: Pengguna rata-rata dapat menyelesaikan draf PRD pertama mereka dalam waktu **di bawah 8 menit**.
 - **Ekspor Dokumen (Export Rate)**: Lebih dari **50%** dari PRD yang selesai di-generate mengalami aktivitas pengunduhan (baik ekspor berkas Markdown maupun ZIP).
-- **Metode Pengukuran**: Pemasangan analitik pelacakan alur (*funnel tracking*) menggunakan Mixpanel, pengumpulan skor NPS berkala pasca-generasi, dan pencatatan log penggunaan token AI di database server.
+- **Metode Pengukuran**: Pencatatan log penggunaan token AI di database server (`ai_usage_logs`, sudah berjalan). Analitik funnel (mis. Mixpanel) dan skor NPS pasca-generasi **belum dipasang**.
 
 ---
 
@@ -198,7 +201,7 @@ Untuk mengukur performa produk, kami menetapkan tolok ukur kesuksesan yang reali
 
 | Risiko | Dampak | Strategi Mitigasi |
 |:---|:---|:---|
-| **Biaya API LLM Membengkak** | Tinggi (Keuangan) | Menerapkan caching jawaban serupa, membatasi request per menit (*rate limiter* 10 request/menit per user), dan menggunakan model yang lebih cepat & ekonomis (`deepseek-v4-flash`) secara default. |
+| **Biaya API LLM Membengkak** | Tinggi (Keuangan) | Rate limiter 10 request/menit per user, kuota token bulanan dengan reservasi sebelum panggilan, retry hanya di server dan hanya bila prompt belum terkirim, serta model ekonomis (`deepseek-v4-flash`) secara default. |
 | **AI Mengalami Timeout (30s limit)** | Sedang (UX Terganggu) | Mengimplementasikan SSE (Server-Sent Events) streaming agar respons AI langsung dikirim secara real-time daripada menunggu selesai. |
 | **Output Kode HTML Rusak / Malformed** | Tinggi (UX Canvas) | Membuat skrip validasi HTML di sisi klien dan mengisolasi rendering pratinjau di dalam sandboxed iframe tanpa akses origin silang (`sandbox="allow-scripts"`). |
 | **Kebocoran Data Klien** | Tinggi (Keamanan) | Mengisolasi database antarpengguna dengan query filter kepemilikan yang ketat didukung oleh Laravel Policy Authorization. |

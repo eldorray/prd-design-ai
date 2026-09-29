@@ -2,22 +2,24 @@
 
 Dokumen ini merangkum area perbaikan dari review aplikasi. Format backlog teknis, bukan PRD produk.
 
-**Status saat ini:** 70 tests passing · Laravel 13 + Inertia v3 + React 19
+**Status saat ini (29 Sep 2026):** 178 Pest tests + 39 vitest tests passing · Laravel 13 + Inertia v3 + React 19
+
+> Semua 8 area di bawah **sudah selesai**. Dokumen ini dipertahankan sebagai catatan keputusan. Backlog berikutnya ada di bagian [Sisa backlog](#sisa-backlog) di akhir.
 
 ---
 
 ## Prioritas
 
-| # | Area | Prioritas | Effort |
-|---|------|-----------|--------|
-| 1 | Rate limiting pada endpoint AI | Tinggi | Kecil |
-| 2 | Refactor komponen frontend besar | Sedang | Sedang |
-| 3 | Streaming untuk generate PRD | Sedang | Sedang |
-| 4 | Integrasi PRD ↔ Design Studio | Sedang | Sedang |
-| 5 | Bersihkan dead code `DesignAssistantController` | Rendah | Kecil |
-| 6 | Perbaikan UX kecil | Rendah | Kecil |
-| 7 | Laravel Policies untuk authorization | Rendah | Kecil |
-| 8 | Tracking penggunaan token / quota | Sedang | Sedang |
+| # | Area | Prioritas | Effort | Status |
+|---|------|-----------|--------|--------|
+| 1 | Rate limiting pada endpoint AI | Tinggi | Kecil | ✅ `throttle:ai` 10/menit per user |
+| 2 | Refactor komponen frontend besar | Sedang | Sedang | ✅ `components/prd`, `components/design`, `lib/*` |
+| 3 | Streaming untuk generate PRD | Sedang | Sedang | ✅ `PrdStreamController` + `lib/stream-sse.ts` |
+| 4 | Integrasi PRD ↔ Design Studio | Sedang | Sedang | ✅ Tombol "Generate UI Mockup" (`prd_id`) |
+| 5 | Bersihkan dead code `DesignAssistantController` | Rendah | Kecil | ✅ Dihapus |
+| 6 | Perbaikan UX kecil | Rendah | Kecil | ✅ Lihat catatan 6c |
+| 7 | Laravel Policies untuk authorization | Rendah | Kecil | ✅ `PrdPolicy`, `DesignPolicy` |
+| 8 | Tracking penggunaan token / quota | Sedang | Sedang | ✅ `ai_usage_logs` + kuota bulanan |
 
 ---
 
@@ -171,6 +173,8 @@ Design preview memakai `parent.postMessage(..., '*')` — origin tidak dibatasi.
 
 → Sebelum production, batasi ke `window.location.origin`.
 
+**Status:** iframe preview memakai `sandbox="allow-scripts"` tanpa `allow-same-origin`, jadi origin-nya `null` dan target origin tidak bisa dipersempit. Sebagai gantinya, parent hanya menerima pesan yang `event.source`-nya iframe preview itu sendiri.
+
 **File terkait**
 
 - `resources/js/pages/dashboard.tsx` (baris ~1194, delete handler)
@@ -235,17 +239,17 @@ ai_usage_logs
 ## Checklist implementasi
 
 ```
-[ ] Rate limiter pada route AI
-[ ] Ekstrak HistorySidebar, UserMenu, ModelSelect
-[ ] Ekstrak prd-parser ke lib/
-[ ] PrdStreamController + frontend streaming
-[ ] Tombol "Buat design dari PRD"
-[ ] Design Studio di welcome page
-[ ] Hapus atau dokumentasikan DesignAssistantController
-[ ] AlertDialog konfirmasi hapus
-[ ] Fix label loading + postMessage origin
-[ ] PrdPolicy + DesignPolicy
-[ ] Tabel ai_usage_logs + persist token usage
+[x] Rate limiter pada route AI
+[x] Ekstrak HistorySidebar, UserMenu, ModelSelect
+[x] Ekstrak prd-parser ke lib/
+[x] PrdStreamController + frontend streaming
+[x] Tombol "Buat design dari PRD"
+[x] Design Studio di welcome page
+[x] Hapus atau dokumentasikan DesignAssistantController
+[x] AlertDialog konfirmasi hapus
+[x] Fix label loading + postMessage origin
+[x] PrdPolicy + DesignPolicy
+[x] Tabel ai_usage_logs + persist token usage
 ```
 
 ---
@@ -258,3 +262,12 @@ ai_usage_logs
 - Pola `key={current?.id}` untuk remount workspace
 - Truncasi message history (18 turn terakhir) sebelum kirim ke API
 - Auth lengkap: Fortify, 2FA, passkey, email verification
+
+---
+
+## Sisa backlog
+
+- **Pagination history sidebar** (PRD & design): payload saat ini kecil (id, judul, waktu). Pakai `Inertia::scroll` + `<InfiniteScroll>` kalau ada user dengan ratusan dokumen.
+- **Larastan di CI**: belum dipasang.
+- **Link share read-only & ekspor DOCX**: belum dibangun. PDF tersedia lewat print browser.
+- **Analitik funnel / NPS**: belum dipasang (lihat `blueprint.md` §9).
