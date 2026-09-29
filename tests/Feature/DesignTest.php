@@ -2,11 +2,8 @@
 
 use App\Models\Design;
 use App\Models\User;
-use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\FnStream;
 use GuzzleHttp\Psr7\Request as GuzzleRequest;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
@@ -318,23 +315,6 @@ test('export strips the legacy visual edit bridge from the document', function (
     expect($html)->toContain('<h1>Hi</h1>');
 });
 
-/**
- * Route the stream controller's Guzzle client through a mock handler.
- *
- * @param  list<mixed>  $queue
- */
-function fakeDesignProvider(array $queue): void
-{
-    config([
-        'services.deepseek.key' => 'test-key',
-        'services.deepseek.base_url' => 'https://api.deepseek.com',
-    ]);
-
-    app()->bind(Client::class, fn ($app, array $parameters) => new Client(
-        ['handler' => HandlerStack::create(new MockHandler($queue))] + ($parameters['config'] ?? []),
-    ));
-}
-
 function streamDesign(User $user): string
 {
     return test()->actingAs($user)
@@ -349,7 +329,7 @@ function streamDesign(User $user): string
 
 test('a design stream that never reached the provider is refunded', function () {
     $request = new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions');
-    fakeDesignProvider([new ConnectException('Connection refused', $request)]);
+    fakeProviderStream([new ConnectException('Connection refused', $request)]);
 
     $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
 
@@ -361,7 +341,7 @@ test('a design request that stalls after being sent keeps its reservation', func
     // The stream handler wraps a post-send timeout as a RequestException with
     // no response — the provider already has the prompt and may be generating.
     $request = new GuzzleRequest('POST', 'https://api.deepseek.com/chat/completions');
-    fakeDesignProvider([new RequestException('Read timed out', $request)]);
+    fakeProviderStream([new RequestException('Read timed out', $request)]);
 
     $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
 
@@ -382,7 +362,7 @@ test('a design stream that drops mid-flight keeps its reservation', function () 
         },
     ]);
 
-    fakeDesignProvider([new GuzzleResponse(200, ['Content-Type' => 'text/event-stream'], $body)]);
+    fakeProviderStream([new GuzzleResponse(200, ['Content-Type' => 'text/event-stream'], $body)]);
 
     $user = User::factory()->create(['role' => 'user', 'token_quota' => 100000]);
 

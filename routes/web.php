@@ -8,6 +8,7 @@ use App\Http\Controllers\DesignExportController;
 use App\Http\Controllers\DesignStreamController;
 use App\Http\Controllers\PrdAssistantController;
 use App\Http\Controllers\PrdController;
+use App\Http\Controllers\PrdStreamController;
 use App\Http\Controllers\WaitlistController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('prd-assistant/messages', PrdAssistantController::class)
         ->middleware('throttle:ai')
         ->name('prd-assistant.messages');
+
+    Route::post('prd-assistant/stream', PrdStreamController::class)
+        ->middleware('throttle:ai')
+        ->name('prd-assistant.stream');
 
     Route::get('ai/models', AiModelController::class)->name('ai.models');
 

@@ -1,5 +1,9 @@
 <?php
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +51,26 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Route the streaming controllers' Guzzle client through a mock handler.
+ * Sent requests are appended to $history (Guzzle history entries).
+ *
+ * @param  list<mixed>  $queue
+ * @param  array<int, array<string, mixed>>  $history
+ */
+function fakeProviderStream(array $queue, array &$history = []): void
+{
+    config([
+        'services.deepseek.key' => 'test-key',
+        'services.deepseek.base_url' => 'https://api.deepseek.com',
+    ]);
+
+    $stack = HandlerStack::create(new MockHandler($queue));
+    $stack->push(Middleware::history($history));
+
+    app()->bind(Client::class, fn ($app, array $parameters) => new Client(
+        ['handler' => $stack] + ($parameters['config'] ?? []),
+    ));
 }
