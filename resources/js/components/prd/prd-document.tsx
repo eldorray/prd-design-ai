@@ -1,10 +1,11 @@
-import { Check, Copy } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Check, Code2, Copy, Network } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { cleanPrdText, parsePrdBlocks } from '@/lib/prd-parser';
 import type { PrdSectionItem } from '@/lib/prd-parser';
+import { renderMermaid } from '@/lib/render-mermaid';
 
 function PrdTable({ rows }: { rows: string[][] }) {
     const [header, ...body] = rows;
@@ -62,8 +63,50 @@ function PrdChecklist({ items }: { items: string[] }) {
     );
 }
 
-export function PrdDiagram({ code, index }: { code: string; index: number }) {
+export function PrdDiagram({
+    code,
+    language,
+    closed,
+    index,
+}: {
+    code: string;
+    language: string;
+    closed: boolean;
+    index: number;
+}) {
     const [copied, setCopied] = useState(false);
+    const [svg, setSvg] = useState<string | null>(null);
+    const [failed, setFailed] = useState(false);
+    const [showCode, setShowCode] = useState(false);
+    const isMermaid = language === 'mermaid';
+
+    useEffect(() => {
+        // Wait for the closing fence: a half-streamed diagram never parses.
+        if (!isMermaid || !closed) {
+            return;
+        }
+
+        let cancelled = false;
+
+        renderMermaid(code).then(
+            (result) => {
+                if (!cancelled) {
+                    setSvg(result);
+                    setFailed(false);
+                }
+            },
+            () => {
+                if (!cancelled) {
+                    setSvg(null);
+                    setFailed(true);
+                }
+            },
+        );
+
+        return () => {
+            cancelled = true;
+        };
+    }, [code, closed, isMermaid]);
 
     const handleCopy = async () => {
         const succeeded = await navigator.clipboard.writeText(code).then(
@@ -73,38 +116,77 @@ export function PrdDiagram({ code, index }: { code: string; index: number }) {
 
         if (succeeded) {
             setCopied(true);
-            toast.success(
-                'Kode diagram disalin. Tempel di mermaid.live untuk melihat visualnya.',
-            );
+            toast.success('Kode diagram disalin.');
 
             setTimeout(() => setCopied(false), 2000);
         }
     };
 
+    const showDiagram = svg !== null && !showCode;
+
     return (
-        <div className="border-border bg-muted/30 rounded-lg border">
-            <div className="border-border/60 flex items-center justify-between border-b px-3 py-1.5">
+        <div className="border-border bg-muted/30 break-inside-avoid rounded-lg border">
+            <div className="border-border/60 flex items-center justify-between border-b px-3 py-1.5 print:hidden">
                 <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                    Diagram {index + 1} · Mermaid
+                    {isMermaid
+                        ? `Diagram ${index + 1} · Mermaid`
+                        : `Kode · ${language || 'teks'}`}
                 </span>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopy}
-                    className="h-7 px-2 text-xs"
-                >
-                    {copied ? (
-                        <Check className="size-3.5" />
-                    ) : (
-                        <Copy className="size-3.5" />
-                    )}
-                    {copied ? 'Tersalin' : 'Salin'}
-                </Button>
+                <div className="flex items-center gap-1">
+                    {svg !== null ? (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowCode((value) => !value)}
+                            className="h-7 px-2 text-xs"
+                        >
+                            {showCode ? (
+                                <Network className="size-3.5" />
+                            ) : (
+                                <Code2 className="size-3.5" />
+                            )}
+                            {showCode ? 'Diagram' : 'Kode'}
+                        </Button>
+                    ) : null}
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopy}
+                        className="h-7 px-2 text-xs"
+                    >
+                        {copied ? (
+                            <Check className="size-3.5" />
+                        ) : (
+                            <Copy className="size-3.5" />
+                        )}
+                        {copied ? 'Tersalin' : 'Salin'}
+                    </Button>
+                </div>
             </div>
-            <pre className="text-foreground overflow-x-auto p-3 text-xs leading-5">
-                <code>{code}</code>
-            </pre>
+            {showDiagram ? (
+                // Mermaid output rendered with securityLevel "strict", which
+                // sanitizes the SVG before it reaches the page.
+                <div
+                    className="overflow-x-auto rounded-b-lg bg-white p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full"
+                    dangerouslySetInnerHTML={{ __html: svg }}
+                />
+            ) : (
+                <pre className="text-foreground overflow-x-auto p-3 text-xs leading-5">
+                    <code>{code}</code>
+                </pre>
+            )}
+            {isMermaid && !closed ? (
+                <p className="text-muted-foreground border-border/60 border-t px-3 py-1.5 text-xs">
+                    Diagram sedang ditulis...
+                </p>
+            ) : null}
+            {failed ? (
+                <p className="text-muted-foreground border-border/60 border-t px-3 py-1.5 text-xs">
+                    Sintaks diagram belum valid, jadi ditampilkan sebagai kode.
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -136,6 +218,8 @@ export function PrdSectionContent({ items }: { items: PrdSectionItem[] }) {
                         <PrdDiagram
                             key={index}
                             code={item.code}
+                            language={item.language}
+                            closed={item.closed}
                             index={diagramOrdinals[index]}
                         />
                     );
