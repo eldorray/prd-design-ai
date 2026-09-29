@@ -184,8 +184,8 @@ selama SMTP belum dipasang:
 - Verifikasi email **dimatikan** di `config/fortify.php`. Ini disengaja —
   mengaktifkannya tanpa mailer akan mengunci setiap akun baru di balik email
   verifikasi yang tidak pernah sampai.
-- Tautan "Forgot password" di halaman login **tidak berfungsi**. Halaman tetap
-  menampilkan pesan sukses, tapi emailnya hanya masuk ke `storage/logs`.
+- Tautan "Forgot password" di halaman login **disembunyikan otomatis** selama
+  `MAIL_MAILER=log` (fitur `resetPasswords` hanya aktif dengan mailer sungguhan).
   Reset password sementara dilakukan lewat konsol:
 
   ```bash
@@ -194,7 +194,8 @@ selama SMTP belum dipasang:
 
   Perintah yang sama memperbarui akun yang sudah ada, termasuk passwordnya.
 
-Setelah SMTP tersedia, isi blok `MAIL_*` di `.env`, lalu aktifkan kembali
+Setelah SMTP tersedia, isi blok `MAIL_*` di `.env` (tautan reset password
+muncul lagi setelah `php artisan config:cache`), lalu aktifkan kembali
 `Features::emailVerification()` di `config/fortify.php` dan tambahkan
 `implements MustVerifyEmail` pada `App\Models\User`.
 
