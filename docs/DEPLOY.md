@@ -199,7 +199,19 @@ muncul lagi setelah `php artisan config:cache`), lalu aktifkan kembali
 `Features::emailVerification()` di `config/fortify.php` dan tambahkan
 `implements MustVerifyEmail` pada `App\Models\User`.
 
-## 8. Setelah deploy
+## 8. Error tracking (Sentry)
+
+Isi DSN dari proyek Sentry di `.env`, lalu `php artisan config:cache`:
+
+```dotenv
+SENTRY_LARAVEL_DSN=https://kunci@o0.ingest.sentry.io/0
+```
+
+Tanpa DSN, integrasi tidak mengirim apa pun dan error hanya masuk ke
+`storage/logs`. Data pribadi pengguna tidak ikut terkirim karena
+`SENTRY_SEND_DEFAULT_PII` default-nya `false`, jadi jangan diaktifkan.
+
+## 9. Setelah deploy
 
 Periksa cepat:
 
