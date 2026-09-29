@@ -23,6 +23,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('prds', [PrdController::class, 'store'])->name('prds.store');
     Route::put('prds/{prd}', [PrdController::class, 'update'])->name('prds.update');
     Route::delete('prds/{prd}', [PrdController::class, 'destroy'])->name('prds.destroy');
+    Route::post('prds/{prd}/versions/{version}/restore', [PrdController::class, 'restoreVersion'])
+        ->scopeBindings()
+        ->name('prds.versions.restore');
 
     Route::post('prd-assistant/messages', PrdAssistantController::class)
         ->middleware('throttle:ai')

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePrdRequest;
 use App\Models\Prd;
+use App\Models\PrdVersion;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +34,17 @@ class PrdController extends Controller
                 'id', 'title', 'model', 'updated_at',
             ]),
             'current' => $current,
+            // Metadata only — content is fetched when a version is restored.
+            'versions' => $current
+                ? $current->versions()
+                    ->selectRaw('id, created_at, LENGTH(content) as characters')
+                    ->get()
+                    ->map(fn (PrdVersion $version): array => [
+                        'id' => $version->id,
+                        'created_at' => $version->created_at?->toIso8601String(),
+                        'characters' => (int) $version->getAttribute('characters'),
+                    ])
+                : [],
         ]);
     }
 
@@ -55,7 +67,23 @@ class PrdController extends Controller
     {
         $this->authorize('update', $prd);
 
-        $prd->update($request->validated());
+        $validated = $request->validated();
+        $prd->replaceContent($validated['content'] ?? null, $validated);
+
+        return response()->json([
+            'prd' => $prd->fresh(),
+        ]);
+    }
+
+    /**
+     * Bring back an earlier content. The replaced content becomes a version
+     * itself, so a restore can be undone too.
+     */
+    public function restoreVersion(Prd $prd, PrdVersion $version): JsonResponse
+    {
+        $this->authorize('update', $prd);
+
+        $prd->replaceContent($version->content);
 
         return response()->json([
             'prd' => $prd->fresh(),
