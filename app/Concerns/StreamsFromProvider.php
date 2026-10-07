@@ -156,7 +156,9 @@ trait StreamsFromProvider
         }
 
         AiQuota::settle($reservation, TokenUsage::total($apiUsage, $body['messages'], $completion));
-        $this->send('done', ['truncated' => $finishReason === 'length']);
+        // The stream closed without [DONE]: unless the provider said it
+        // stopped normally, the answer was cut off on the way.
+        $this->send('done', ['truncated' => $finishReason !== 'stop']);
     }
 
     /**

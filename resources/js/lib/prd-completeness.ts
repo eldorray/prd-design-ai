@@ -162,3 +162,23 @@ export function mergePrdSections(
         .filter(Boolean)
         .join('\n\n');
 }
+
+/**
+ * A rewrite the output limit cut off keeps the previous draft's tail: the cut
+ * section, and every section the rewrite never reached, come back from
+ * `previous`. Costs no tokens, unlike asking the model to write them again.
+ */
+export function restoreTruncatedTail(
+    next: string,
+    previous: string,
+    required: string[],
+): string {
+    const { incomplete } = checkPrdCompleteness(next, required, true);
+
+    return mergePrdSections(
+        next,
+        previous,
+        required,
+        incomplete ? [incomplete] : [],
+    );
+}

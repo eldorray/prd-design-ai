@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     checkPrdCompleteness,
     mergePrdSections,
+    restoreTruncatedTail,
     sectionsToComplete,
 } from '@/lib/prd-completeness';
 
@@ -141,5 +142,17 @@ describe('mergePrdSections', () => {
                 REQUIRED,
             ),
         ).toBe('## Ringkasan\na\n\n## Masalah\nb');
+    });
+});
+
+describe('restoreTruncatedTail', () => {
+    it('takes the cut section and the unreached ones from the previous draft', () => {
+        const previous =
+            '# P\n## Ringkasan\nlama\n## Masalah\nlama\n## Fitur Utama\nlama\n## API Endpoints\nlama';
+        const cut = '# P\n## Ringkasan\nbaru\n## Masalah\nbaru dan terpo';
+
+        expect(restoreTruncatedTail(cut, previous, REQUIRED)).toBe(
+            '# P\n\n## Ringkasan\nbaru\n\n## Masalah\nlama\n\n## Fitur Utama\nlama\n\n## API Endpoints\nlama',
+        );
     });
 });

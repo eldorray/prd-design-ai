@@ -248,6 +248,35 @@ describe('parsePrdBlocks', () => {
     });
 });
 
+describe('parsePrdBlocks with a table that is still arriving', () => {
+    // While a PRD streams in, the last line is often a table header whose
+    // separator row has not arrived yet. That line used to be claimed by no
+    // branch, so the loop never advanced and the tab ran out of memory
+    // (Chrome "Aw, Snap! Error code: 5").
+    it('treats a header row without its separator as text', () => {
+        expect(
+            parsePrdBlocks(['Endpoint:', '| Method | Endpoint | Deskripsi |']),
+        ).toEqual([
+            {
+                type: 'text',
+                lines: ['Endpoint:', '| Method | Endpoint | Deskripsi |'],
+            },
+        ]);
+    });
+
+    it('treats a half-written row as text', () => {
+        expect(parsePrdBlocks(['| Meth'])).toEqual([
+            { type: 'text', lines: ['| Meth'] },
+        ]);
+    });
+
+    it('still recognises the table once its separator arrives', () => {
+        expect(
+            parsePrdBlocks(['| Method | Endpoint |', '| --- | --- |']),
+        ).toEqual([{ type: 'table', rows: [['Method', 'Endpoint']] }]);
+    });
+});
+
 describe('deriveTitle', () => {
     it('uses the first "# " heading of the content', () => {
         expect(deriveTitle('# Judul PRD\n\n## A', 'ide')).toBe('Judul PRD');

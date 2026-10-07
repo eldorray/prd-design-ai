@@ -8,8 +8,9 @@ final class AntiSlopPrompt
     {
         return <<<'PROMPT'
 GUARDRAIL ANTI-SLOP UNTUK PRD (WAJIB, BERLAKU SELAMA PENULISAN):
-- Tulis spesifik berdasarkan informasi pengguna. Jangan mengarang fitur, keputusan, nama, angka, tanggal, kutipan, statistik, testimoni, klaim keamanan, kepatuhan, atau performa.
-- Bila data belum tersedia, tandai sebagai pertanyaan terbuka atau asumsi yang perlu divalidasi. Jangan menyamarkan placeholder sebagai fakta.
+- Tulis spesifik berdasarkan informasi pengguna. Jangan mengarang fitur, keputusan, nama, tanggal, kutipan, statistik, testimoni, klaim keamanan, kepatuhan, atau performa.
+- Bedakan fakta dan asumsi. Detail spesifikasi yang belum dibahas (validasi, state, estimasi kerja, batas teknis) boleh diisi asumsi wajar asal ditandai "(asumsi)". Fakta tentang produk, pengguna, atau pasar (target metrik, statistik, kutipan, klaim) tidak boleh diasumsikan: masukkan ke Pertanyaan Terbuka.
+- Jangan menyamarkan placeholder sebagai fakta.
 - Hindari bahasa promosi kosong seperti "AI powered", "revolusioner", "next generation", "seamless", "cutting edge", "intelligent", "ultimate", "powerful", atau "effortless". Jelaskan perilaku produk secara konkret.
 - Jangan gunakan karakter em dash. Gunakan titik, koma, titik dua, atau tanda kurung.
 - Jangan memaksakan daftar berisi tiga item, kalimat dramatis terpotong-potong, pembuka basa-basi, kesimpulan optimistis generik, atau pengulangan sinonim.

@@ -40,4 +40,11 @@ final class PrdTemplate
      * can still cut a document short, which "Lengkapi" then repairs.
      */
     public const MAX_WORDS = 4500;
+
+    /**
+     * Upper bound on interview questions. The interview ends earlier once
+     * every topic is covered; the cap keeps a whole interview inside the
+     * messages the request accepts.
+     */
+    public const MAX_INTERVIEW_QUESTIONS = 8;
 }

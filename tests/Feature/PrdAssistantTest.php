@@ -248,7 +248,8 @@ test('interview system prompt includes anti-repeat rule, answer count, and ready
 
     Http::assertSent(fn ($request): bool => str_contains($request['messages'][0]['content'], 'Jangan mengulang pertanyaan')
         && str_contains($request['messages'][0]['content'], '[SIAP_GENERATE]')
-        && str_contains($request['messages'][0]['content'], 'sudah menjawab 2 kali'));
+        // The opening idea message is not an answer to any question.
+        && str_contains($request['messages'][0]['content'], 'sudah menjawab 1 kali'));
 });
 
 test('generate system prompt includes the full document structure', function () {

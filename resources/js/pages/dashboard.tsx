@@ -35,6 +35,7 @@ import type { Model } from '@/lib/models';
 import {
     checkPrdCompleteness,
     mergePrdSections,
+    restoreTruncatedTail,
     sectionsToComplete,
 } from '@/lib/prd-completeness';
 import {
@@ -234,9 +235,15 @@ function PrdWorkspace({
     // Every AI call debits the monthly token quota shown in the panel.
     const refreshQuota = () => router.reload({ only: ['quota'] });
 
+    /**
+     * Save the PRD. The first save creates it and, by default, navigates to
+     * its URL — which remounts the workspace, so `navigate: false` is used
+     * while a stream is about to run and must not be interrupted.
+     */
     const persistPrd = async (
         nextMessages: ChatMessage[],
         nextContent: string,
+        { navigate = true }: { navigate?: boolean } = {},
     ) => {
         const id = currentPrdIdRef.current;
         const payload = {
@@ -272,7 +279,10 @@ function PrdWorkspace({
 
             const data = (await response.json()) as { prd: Prd };
 
-            if (!id) {
+            if (!id && !navigate) {
+                assignPrdId(data.prd.id);
+                router.reload({ only: ['history', 'quota'] });
+            } else if (!id) {
                 assignPrdId(data.prd.id);
                 router.get(
                     PrdController.index.url({ query: { prd: data.prd.id } }),
@@ -328,8 +338,10 @@ function PrdWorkspace({
             model,
             mode,
             idea,
-            draft: prd,
-            messages: requestMessages.map(({ role, content }) => ({
+            // The interview never reads the draft; sending it only costs bytes.
+            draft: mode === 'interview' ? null : prd,
+            // The request accepts at most 30 messages.
+            messages: requestMessages.slice(-30).map(({ role, content }) => ({
                 role,
                 content,
             })),
@@ -339,7 +351,6 @@ function PrdWorkspace({
         if (mode !== 'interview') {
             return streamPrd(
                 requestBody,
-                displayMessages,
                 previousMessages,
                 streamOptions.transform,
             );
@@ -402,13 +413,11 @@ function PrdWorkspace({
             );
 
             // Only interviews come through here (generate/refine stream), so
-            // an answer changes the transcript but never the document.
-            // Saving reloads the quota too; an unsaved draft reloads it alone.
-            if (currentPrdIdRef.current) {
-                await persistPrd(finalMessages, prd);
-            } else {
-                refreshQuota();
-            }
+            // an answer changes the transcript but never the document. Save
+            // after every reply: the first one creates the draft, so the
+            // interview is in the history and survives a crash or a failed
+            // generation. Saving reloads the quota too.
+            await persistPrd(finalMessages, prd);
 
             return true;
         } catch (caughtError) {
@@ -436,10 +445,15 @@ function PrdWorkspace({
      */
     const streamPrd = async (
         requestBody: Record<string, unknown>,
-        displayMessages: ChatMessage[],
         previousMessages: ChatMessage[],
         transform: (text: string) => string = (text) => text,
     ): Promise<boolean> => {
+        // Make sure the draft exists before spending tokens on it, so a crash
+        // or a failed stream leaves something in the history to resume.
+        if (!currentPrdIdRef.current) {
+            await persistPrd(previousMessages, prd, { navigate: false });
+        }
+
         const controller = new AbortController();
         streamAbortRef.current = controller;
         const previousStage = stage;
@@ -496,15 +510,25 @@ function PrdWorkspace({
             return false;
         }
 
-        const finalMessages: ChatMessage[] = [
-            ...displayMessages,
-            { id: newId(), role: 'assistant', content: finalText },
-        ];
+        // A refine the output limit cut off would drop the draft's tail; the
+        // previous draft still has it, so take it from there for free.
+        const restoredTail =
+            truncated && requestBody.mode === 'refine' && prd.trim() !== '';
 
-        setMessages(finalMessages);
+        if (restoredTail) {
+            finalText = restoreTruncatedTail(finalText, prd, prdSections);
+            toast.warning(
+                'Jawaban AI terpotong. Bagian akhir PRD diambil dari versi sebelumnya.',
+            );
+        }
+
+        // The document lives in `content` (and its versions), not in the
+        // transcript: copying it there pushed a long PRD past the 12,000
+        // character limit per message, so saving it failed.
+        setMessages(previousMessages);
         setPrd(finalText);
-        setLastTruncated(truncated);
-        await persistPrd(finalMessages, finalText);
+        setLastTruncated(truncated && !restoredTail);
+        await persistPrd(previousMessages, finalText);
 
         return true;
     };
@@ -617,11 +641,8 @@ function PrdWorkspace({
             return;
         }
 
-        const succeeded = await askAssistant(
-            'interview',
-            `Pertanyaan AI: ${activeQuestion.content}\nJawaban user: ${combinedAnswer}`,
-            combinedAnswer,
-        );
+        // The question is already the previous assistant message.
+        const succeeded = await askAssistant('interview', combinedAnswer);
 
         if (succeeded) {
             setAnswer('');

@@ -26,14 +26,6 @@ class PrdAssistantController extends Controller
             set_time_limit(120);
         }
 
-        $user = $request->user();
-
-        if ($user && $user->isBlocked()) {
-            return response()->json([
-                'message' => 'Akun Anda ditangguhkan.',
-            ], 403);
-        }
-
         $payload = $request->validated();
         $apiKey = AiProvider::apiKey($payload['model']);
 
@@ -47,16 +39,14 @@ class PrdAssistantController extends Controller
 
         // Debit an estimate before the provider call so parallel requests
         // cannot all clear the same balance. Settled with the real usage below.
-        $reservation = null;
+        // Blocked accounts never get here: EnsureUserNotBlocked runs on every
+        // web request.
+        $reservation = AiQuota::reserve($request->user(), $payload['model'], $payload['mode'], TokenUsage::estimate($messages));
 
-        if ($user) {
-            $reservation = AiQuota::reserve($user, $payload['model'], $payload['mode'], TokenUsage::estimate($messages));
-
-            if ($reservation === null) {
-                return response()->json([
-                    'message' => AiQuota::EXHAUSTED_MESSAGE,
-                ], 403);
-            }
+        if ($reservation === null) {
+            return response()->json([
+                'message' => AiQuota::EXHAUSTED_MESSAGE,
+            ], 403);
         }
 
         $requestBody = $this->prdRequestBody($payload, $messages, false);

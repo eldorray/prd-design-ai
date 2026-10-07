@@ -272,18 +272,22 @@ export function parsePrdBlocks(
             .split('|')
             .map((cell) => cell.trim());
 
+    const isChecklistItem = (line: string) => /^[-*]\s+\[[ xX]\]\s+/.test(line);
+
+    // Markdown table: header row + separator row. A "|" row without its
+    // separator (still streaming, or malformed) is not a table.
+    const startsTable = (index: number) =>
+        lines[index].startsWith('|') &&
+        index + 1 < lines.length &&
+        /^\|?[\s:-]+\|/.test(lines[index + 1]) &&
+        /^[\s|:-]+$/.test(lines[index + 1]);
+
     let i = 0;
 
     while (i < lines.length) {
         const line = lines[i];
 
-        // Markdown table: header row + separator row.
-        if (
-            line.startsWith('|') &&
-            i + 1 < lines.length &&
-            /^\|?[\s:-]+\|/.test(lines[i + 1]) &&
-            /^[\s|:-]+$/.test(lines[i + 1])
-        ) {
+        if (startsTable(i)) {
             const rows: string[][] = [splitRow(line)];
             i += 2; // skip separator
 
@@ -298,10 +302,10 @@ export function parsePrdBlocks(
         }
 
         // Task checklist item (- [ ] ... / - [x] ...).
-        if (/^[-*]\s+\[[ xX]\]\s+/.test(line)) {
+        if (isChecklistItem(line)) {
             const items: string[] = [];
 
-            while (i < lines.length && /^[-*]\s+\[[ xX]\]\s+/.test(lines[i])) {
+            while (i < lines.length && isChecklistItem(lines[i])) {
                 items.push(lines[i].replace(/^[-*]\s+\[[ xX]\]\s+/, ''));
                 i += 1;
             }
@@ -311,12 +315,16 @@ export function parsePrdBlocks(
             continue;
         }
 
-        const text: string[] = [];
+        // Neither branch above claimed this line, so it is text — including a
+        // "|" row whose separator has not streamed in yet. Taking it here is
+        // what guarantees progress; without it such a row looped forever.
+        const text: string[] = [line];
+        i += 1;
 
         while (
             i < lines.length &&
-            !lines[i].startsWith('|') &&
-            !/^[-*]\s+\[[ xX]\]\s+/.test(lines[i])
+            !startsTable(i) &&
+            !isChecklistItem(lines[i])
         ) {
             text.push(lines[i]);
             i += 1;

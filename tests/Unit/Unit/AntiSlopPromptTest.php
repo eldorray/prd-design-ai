@@ -7,6 +7,7 @@ test('prd guardrail rejects fabricated and generic copy', function () {
 
     expect($prompt)
         ->toContain('Jangan mengarang fitur')
+        ->toContain('Bedakan fakta dan asumsi')
         ->toContain('Jangan gunakan karakter em dash')
         ->toContain('Belum ditentukan')
         ->toContain('Pertanyaan Terbuka')
