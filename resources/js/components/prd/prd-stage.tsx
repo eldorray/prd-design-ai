@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import {
+    Bot,
     Copy,
     Download,
     FilePlus2,
@@ -64,6 +65,7 @@ export function PrdActions({
     isStreaming,
     compact = false,
     onCopy,
+    onCopyPrompt,
     onExport,
     onPrint,
     className,
@@ -72,6 +74,8 @@ export function PrdActions({
     isStreaming: boolean;
     compact?: boolean;
     onCopy: () => void;
+    /** Copies the PRD wrapped in instructions for a coding agent. */
+    onCopyPrompt: () => void;
     onExport: () => void;
     onPrint: () => void;
     className?: string;
@@ -113,6 +117,17 @@ export function PrdActions({
             >
                 <Copy className="size-4" />
                 {label('Salin')}
+            </Button>
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9"
+                title={compact ? 'Salin prompt agent' : undefined}
+                onClick={onCopyPrompt}
+            >
+                <Bot className="size-4" />
+                {label('Salin prompt agent')}
             </Button>
             <Button
                 type="button"
@@ -284,6 +299,7 @@ export function PrdStage({
     onRestoreVersion,
     onComplete,
     onCopy,
+    onCopyPrompt,
     onExport,
     onPrint,
 }: {
@@ -299,6 +315,7 @@ export function PrdStage({
     onRestoreVersion: (versionId: string) => void;
     onComplete: () => void;
     onCopy: () => void;
+    onCopyPrompt: () => void;
     onExport: () => void;
     onPrint: () => void;
 }) {
@@ -311,6 +328,7 @@ export function PrdStage({
                 prdId={prdId}
                 isStreaming={isStreaming}
                 onCopy={onCopy}
+                onCopyPrompt={onCopyPrompt}
                 onExport={onExport}
                 onPrint={onPrint}
                 className="-ml-2.5 w-full max-w-[760px] xl:hidden"

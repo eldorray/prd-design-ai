@@ -31,6 +31,7 @@ import { UserMenu } from '@/components/workspace/user-menu';
 import { useAiModels } from '@/hooks/use-ai-models';
 import type { AiModelOption } from '@/hooks/use-ai-models';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { buildAgentPrompt } from '@/lib/agent-prompt';
 import type { Model } from '@/lib/models';
 import {
     checkPrdCompleteness,
@@ -721,6 +722,22 @@ function PrdWorkspace({
         }
     };
 
+    const copyAgentPrompt = async () => {
+        const succeeded = await copy(buildAgentPrompt(prd));
+
+        if (!succeeded) {
+            toast.error('Gagal menyalin prompt.');
+        } else if (completeness.missing.length > 0) {
+            // The agent works from Task Breakdown and Acceptance Criteria, so
+            // a gap there shows up as unbuilt work.
+            toast.warning(
+                `Prompt disalin, tapi PRD belum lengkap (${completeness.missing.length} section belum ada). Pertimbangkan "Lengkapi" dulu.`,
+            );
+        } else {
+            toast.success('Prompt disalin. Tempel ke coding agent Anda.');
+        }
+    };
+
     const exportMarkdown = () => {
         const productName =
             deriveTitle(prd, idea)
@@ -854,6 +871,7 @@ function PrdWorkspace({
                                         prdId={currentPrdId}
                                         isStreaming={streamingPrd !== null}
                                         onCopy={copyPrd}
+                                        onCopyPrompt={copyAgentPrompt}
                                         onExport={exportMarkdown}
                                         onPrint={printPrd}
                                         className="hidden xl:flex"
@@ -951,6 +969,7 @@ function PrdWorkspace({
                                 onRestoreVersion={restoreVersion}
                                 onComplete={completePrd}
                                 onCopy={copyPrd}
+                                onCopyPrompt={copyAgentPrompt}
                                 onExport={exportMarkdown}
                                 onPrint={printPrd}
                             />
