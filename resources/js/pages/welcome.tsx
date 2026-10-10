@@ -10,6 +10,7 @@ import type { Auth } from '@/types';
 
 type PageProps = {
     auth: Auth;
+    poweredBy: string | null;
     [key: string]: unknown;
 };
 
@@ -101,7 +102,7 @@ const TEXT_LINK = cn(
 const ANCHOR_OFFSET = 'scroll-mt-16 lg:scroll-mt-20';
 
 export default function Welcome() {
-    const { auth } = usePage<PageProps>().props;
+    const { auth, poweredBy } = usePage<PageProps>().props;
 
     return (
         <>
@@ -466,6 +467,7 @@ export default function Welcome() {
                         <p>Dari ide mentah ke PRD siap development.</p>
                         <span className="font-mono text-xs">
                             © {new Date().getFullYear()} PRD.ai
+                            {poweredBy ? ` · Powered by ${poweredBy}` : null}
                         </span>
                     </div>
                 </footer>
