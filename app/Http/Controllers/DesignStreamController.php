@@ -22,34 +22,22 @@ class DesignStreamController extends Controller
             set_time_limit(0);
         }
 
-        $user = $request->user();
-
-        if ($user && $user->isBlocked()) {
-            abort(403, 'Akun Anda ditangguhkan.');
-        }
-
         $payload = $request->validated();
+        $body = $this->chatBody($payload, true);
 
-        // Debit an estimate before the stream opens. The studio fires one
-        // request per selected canvas in parallel, and a balance check that
-        // only wrote its usage at the end let every one of them through.
-        $promptTokens = TokenUsage::estimate([
-            ['content' => $payload['prompt']],
-            ['content' => $payload['current_html'] ?? ''],
-        ]);
+        // Debit an estimate of everything sent, system prompt included, before
+        // the stream opens. The studio fires one request per selected canvas
+        // in parallel, and a balance check that only wrote its usage at the end
+        // let every one of them through. Blocked accounts never get here:
+        // EnsureUserNotBlocked runs on every web request.
+        $reservation = AiQuota::reserve($request->user(), $payload['model'], $payload['mode'], TokenUsage::estimate($body['messages']));
 
-        $reservation = $user
-            ? AiQuota::reserve($user, $payload['model'], $payload['mode'], $promptTokens)
-            : null;
-
-        if ($user && $reservation === null) {
+        if ($reservation === null) {
             abort(403, AiQuota::EXHAUSTED_MESSAGE);
         }
 
         return $this->sseResponse(
-            // The body is built inside the stream: it may wait on Context7,
-            // and the connection should already be open by then.
-            fn () => $this->streamFromProvider($payload['model'], $this->chatBody($payload, true), $reservation),
+            fn () => $this->streamFromProvider($payload['model'], $body, $reservation),
             $reservation,
             'Generate design gagal diproses server.',
         );

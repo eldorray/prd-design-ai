@@ -3,7 +3,6 @@
 namespace App\Concerns;
 
 use App\Models\AiPrompt;
-use App\Services\Context7Service;
 use App\Support\AiProvider;
 use App\Support\AntiSlopPrompt;
 use Illuminate\Support\Str;
@@ -28,7 +27,7 @@ Aturan WAJIB:
 - Jangan gunakan file eksternal atau CDN baru (kecuali Google Fonts untuk tipografi). Pertahankan semua inline SVG dan aset yang sudah ada.
 - Beri atau pertahankan atribut data-editable="text" pada elemen teks utama agar mudah diedit secara visual.
 - Tulis konten teks baru dalam Bahasa Indonesia, kecuali pengguna meminta bahasa lain secara eksplisit.
-- JANGAN tulis penjelasan, komentar, blok markdown, chain-of-thought, atau tag <think>/</think>. Output HARUS diawali <!doctype html> pada karakter pertama dan diakhiri </html> — pastikan dokumen lengkap dan tidak terpotong.
+- JANGAN tulis penjelasan, blok markdown, chain-of-thought, atau tag <think>/</think>. Komentar hanya satu: komentar "Design read" dari guardrail, tepat setelah <!doctype html>. Output HARUS diawali <!doctype html> pada karakter pertama dan diakhiri </html>. Pastikan dokumen lengkap dan tidak terpotong.
 PROMPT;
         }
 
@@ -52,10 +51,10 @@ Aturan output WAJIB:
 - Keluarkan SATU dokumen HTML lengkap yang berdiri sendiri, mulai dari <!doctype html> sampai </html>.
 - Tulis dokumen secara berurutan dari atas ke bawah: <head> dengan <style>, lalu <body> mulai dari navigasi/header, konten utama, hingga footer.
 - Sisipkan CSS di dalam satu tag <style> di <head>. Sisipkan JavaScript di dalam satu tag <script> sebelum </body> jika perlu interaksi.
-- Jangan gunakan file eksternal, CDN, atau gambar dari URL (kecuali Google Fonts untuk tipografi). Gunakan warna, gradient, dan SVG inline untuk elemen visual.
+- Jangan gunakan file eksternal, CDN, atau gambar dari URL (kecuali Google Fonts untuk tipografi). Gunakan warna dan SVG inline untuk elemen visual.
 - Beri atribut data-editable="text" pada elemen teks utama (heading, paragraf, label tombol) agar mudah diedit.
 - Tulis seluruh konten teks halaman dalam Bahasa Indonesia, kecuali pengguna meminta bahasa lain secara eksplisit.
-- JANGAN tulis penjelasan, komentar, blok markdown, chain-of-thought, atau tag <think>/</think>. Output HARUS diawali <!doctype html> pada karakter pertama dan diakhiri </html> — pastikan dokumen lengkap dan tidak terpotong.
+- JANGAN tulis penjelasan, blok markdown, chain-of-thought, atau tag <think>/</think>. Komentar hanya satu: komentar "Design read" dari guardrail, tepat setelah <!doctype html>. Output HARUS diawali <!doctype html> pada karakter pertama dan diakhiri </html>. Pastikan dokumen lengkap dan tidak terpotong.
 PROMPT;
     }
 
@@ -106,16 +105,6 @@ PROMPT;
         // Admin-configured prompt injections for the design scope.
         foreach (AiPrompt::activeFor('design') as $injection) {
             $systemContent .= "\n\n".$injection['content'];
-        }
-
-        try {
-            $context7 = app(Context7Service::class);
-            $docs = $context7->getDocsForPrompt($payload['prompt']);
-            if (! empty($docs)) {
-                $systemContent .= $docs;
-            }
-        } catch (\Exception $e) {
-            // fail-silent
         }
 
         // Keep non-negotiable generation safeguards after every other instruction.

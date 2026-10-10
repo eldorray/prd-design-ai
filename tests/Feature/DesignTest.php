@@ -369,3 +369,63 @@ test('a design stream that drops mid-flight keeps its reservation', function () 
     expect(streamDesign($user))->toContain('event: chunk')->toContain('event: error')
         ->and($user->aiUsageLogs()->count())->toBe(1);
 });
+
+test('the design stream accepts only an inline reference image', function () {
+    config(['services.deepseek.key' => null]);
+
+    $user = User::factory()->create();
+    $request = fn (string $image) => $this->actingAs($user)->postJson(route('design-assistant.stream'), [
+        'model' => 'deepseek-v4-flash',
+        'mode' => 'generate',
+        'kind' => 'landing-page',
+        'prompt' => 'Landing page kopi',
+        'image' => $image,
+    ]);
+
+    $request('https://example.com/screenshot.png')->assertJsonValidationErrors('image');
+    $request('data:text/html;base64,PGgxPkhpPC9oMT4=')->assertJsonValidationErrors('image');
+    $request('data:image/png;base64,iVBORw0KGgo=')->assertOk();
+});
+
+test('the design stream counts its system prompt against the quota', function () {
+    // The prompt alone is a handful of tokens; the system prompt and
+    // guardrails are well over a thousand.
+    $user = User::factory()->create(['role' => 'user', 'token_quota' => 600]);
+
+    $this->actingAs($user)
+        ->postJson(route('design-assistant.stream'), [
+            'model' => 'deepseek-v4-flash',
+            'mode' => 'generate',
+            'kind' => 'landing-page',
+            'prompt' => 'Landing page kopi',
+        ])
+        ->assertForbidden();
+});
+
+test('export keeps data scripts, modules and media styles inline', function () {
+    $user = User::factory()->create();
+    $design = Design::factory()->for($user)->create([
+        'title' => 'Mixed Blocks',
+        'html' => '<!doctype html><html><head><style>body{color:red}</style>'
+            .'<style media="print">nav{display:none}</style>'
+            .'<script type="application/ld+json">{"@type":"Organization"}</script></head>'
+            .'<body><h1>Hi</h1><script type="module">import "./x.js"</script>'
+            .'<script type="text/javascript">console.log(1)</script><script>console.log(2)</script></body></html>',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('designs.export', $design));
+
+    $zip = new ZipArchive;
+    $zip->open($response->getFile()->getPathname());
+    $html = $zip->getFromName('index.html');
+    $css = $zip->getFromName('style.css');
+    $js = $zip->getFromName('script.js');
+    $zip->close();
+
+    expect($html)
+        ->toContain('<style media="print">nav{display:none}</style>')
+        ->toContain('<script type="application/ld+json">{"@type":"Organization"}</script>')
+        ->toContain('<script type="module">import "./x.js"</script>')
+        ->and($css)->toBe('body{color:red}')
+        ->and($js)->toBe("console.log(1)\nconsole.log(2)");
+});

@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\BuildsDesignPrompt;
+use App\Support\AntiSlopPrompt;
 
 function designPromptBuilder(): object
 {
@@ -45,4 +46,18 @@ test('generate system prompt does not force visual slop or fabricated social pro
         ->not->toContain('Gunakan gradient mesh')
         ->not->toContain('Dominan warna gelap')
         ->not->toContain('Sisipkan efek visual stagger');
+});
+
+test('design prompts agree on comments, gradients and dashes', function () {
+    foreach (['generate', 'refine'] as $mode) {
+        $prompt = designPromptBuilder()->build('landing', $mode).AntiSlopPrompt::forDesign($mode);
+
+        expect($prompt)
+            ->toContain('Komentar hanya satu')
+            ->toContain('tepat setelah <!doctype html>')
+            ->toContain('Jangan menulis komentar alasan di CSS')
+            ->not->toContain('komentar CSS di dekat implementasinya')
+            ->not->toContain('warna, gradient, dan SVG')
+            ->not->toContain('—');
+    }
 });

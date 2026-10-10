@@ -56,6 +56,14 @@ const EXAMPLE_PROMPTS: Record<DesignKind, string> = {
 };
 
 // Scrollable body between the panel header and the pinned action footer.
+/** What the server accepts as a reference screenshot. */
+const REFERENCE_IMAGE_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+];
+
 const BODY_CLASS =
     'flex flex-col gap-5 px-4 py-5 md:px-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto';
 
@@ -133,7 +141,7 @@ export function PromptPanel({
     const handlePaste = (e: React.ClipboardEvent) => {
         const file = e.clipboardData?.files?.[0];
 
-        if (file && file.type.startsWith('image/')) {
+        if (file && REFERENCE_IMAGE_TYPES.includes(file.type)) {
             const reader = new FileReader();
             reader.onload = () => {
                 onImageChange(reader.result as string);
@@ -145,6 +153,15 @@ export function PromptPanel({
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
+        if (file && !REFERENCE_IMAGE_TYPES.includes(file.type)) {
+            toast.error(
+                'Gambar referensi harus berupa PNG, JPEG, WebP, atau GIF.',
+            );
+            e.target.value = '';
+
+            return;
+        }
 
         if (file) {
             const reader = new FileReader();
@@ -301,7 +318,7 @@ export function PromptPanel({
                                     </span>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept={REFERENCE_IMAGE_TYPES.join(',')}
                                         className="sr-only"
                                         disabled={isGenerating}
                                         onChange={handleImageUpload}

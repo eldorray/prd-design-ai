@@ -30,8 +30,19 @@ class DesignAssistantRequest extends FormRequest
             'prompt' => ['required', 'string', 'max:50000'],
             'current_html' => ['nullable', 'string', 'max:120000'],
             // Base64 vision payload; ~8M chars ≈ 6 MB binary, matching the
-            // provider's vision upload ceiling.
-            'image' => ['nullable', 'string', 'max:8000000'],
+            // provider's vision upload ceiling. Only an inline image is
+            // forwarded: a plain URL would have the provider fetch anything.
+            'image' => ['nullable', 'string', 'max:8000000', 'regex:/^data:image\/(png|jpeg|webp|gif);base64,/'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'image.regex' => 'Gambar referensi harus berupa PNG, JPEG, WebP, atau GIF.',
         ];
     }
 }

@@ -31,8 +31,8 @@ PROMPT;
         return <<<PROMPT
 GUARDRAIL ANTI-SLOP UNTUK DESAIN (WAJIB, BERLAKU SELAMA PENULISAN):
 {$refinementRule}
-- Baca permintaan sebagai arah desain. Nyatakan arah itu di komentar HTML singkat dengan format "Design read: [jenis halaman], [audiens], [bahasa visual], ENERGY n / RHYTHM n / MOTION n". Bila arah tidak cukup, gunakan "draft tanpa arah" dengan ENERGY 1 / RHYTHM 1 / MOTION 1.
-- Setiap keputusan utama untuk warna, tipografi, layout, spacing, card, ikon, ilustrasi, efek, dan motion harus memiliki alasan satu baris dalam komentar CSS di dekat implementasinya.
+- Baca permintaan sebagai arah desain. Nyatakan arah itu di satu komentar HTML tepat setelah <!doctype html> dengan format "Design read: [jenis halaman], [audiens], [bahasa visual], ENERGY n / RHYTHM n / MOTION n". Bila arah tidak cukup, gunakan "draft tanpa arah" dengan ENERGY 1 / RHYTHM 1 / MOTION 1.
+- Setiap keputusan utama untuk warna, tipografi, layout, spacing, card, ikon, ilustrasi, efek, dan motion harus mengikuti arah di komentar Design read. Jangan menulis komentar alasan di CSS.
 - Jangan memakai gradient biru-ungu, glow, glassmorphism, grid latar, shadow besar, dark mode, asimetri, atau animasi sebagai default. Pakai hanya bila mendukung arah atau hierarki yang dinyatakan. Backdrop blur dan glow masing-masing maksimal pada satu atau dua elemen.
 - Batasi palet aktif menjadi dua atau tiga warna inti dan satu aksen, di luar warna netral. Gunakan aksen hanya pada fokus utama.
 - Buat satu focal point yang jelas per layar. Gunakan whitespace sebagai struktur dan variasikan komposisi sesuai dial RHYTHM, bukan template hero dan grid kartu generik.

@@ -50,8 +50,4 @@ return [
         ],
     ],
 
-    'context7' => [
-        'api_key' => env('CONTEXT7_API_KEY'),
-    ],
-
 ];

@@ -27,7 +27,7 @@ import { useAiModels } from '@/hooks/use-ai-models';
 import type { AiModelOption } from '@/hooks/use-ai-models';
 import { useCanvases } from '@/hooks/use-canvases';
 import { exportDesign } from '@/lib/design-export';
-import { cleanHtml, deriveTitle } from '@/lib/design-html';
+import { cleanHtml, deriveTitle, MAX_SAVED_MESSAGES } from '@/lib/design-html';
 import type { Model } from '@/lib/models';
 import { streamSse } from '@/lib/stream-sse';
 import type {
@@ -326,7 +326,9 @@ function DesignWorkspace({
         const canvasesPayload = selectedKinds.map((k) => ({
             kind: k,
             html: canvasMap[k]?.html || null,
-            messages: canvasMap[k]?.messages ?? [],
+            // Every version is a whole HTML document; the newest ones are
+            // what a long refine session needs, and all of them did not fit.
+            messages: (canvasMap[k]?.messages ?? []).slice(-MAX_SAVED_MESSAGES),
             prompt: canvasMap[k]?.prompt ?? null,
         }));
 
@@ -336,7 +338,9 @@ function DesignWorkspace({
             kind: activeKind,
             model,
             html: activeData?.html || null,
-            messages: activeData?.messages ?? [],
+            // Legacy column, read only for designs saved before canvases:
+            // the active canvas already carries these messages.
+            messages: [],
             canvases: canvasesPayload,
         };
 
@@ -442,6 +446,7 @@ function DesignWorkspace({
             Record<DesignKind, { html: string; messages: DesignMessage[] }>
         > = {};
         const errorMessages: string[] = [];
+        const truncatedKinds: DesignKind[] = [];
         let abortedByUser = false;
 
         try {
@@ -450,6 +455,7 @@ function DesignWorkspace({
                     const canvas = canvases[k];
                     const activeHtml = canvas?.html ?? '';
                     let finalHtml = '';
+                    let truncated = false;
 
                     try {
                         // Share one AbortController across all parallel canvas streams
@@ -484,8 +490,9 @@ function DesignWorkspace({
                                             ...s,
                                             [k]: cleanHtml(fullHtml),
                                         })),
-                                    onDone: (fullHtml) => {
+                                    onDone: (fullHtml, meta) => {
                                         finalHtml = cleanHtml(fullHtml);
+                                        truncated = meta.truncated;
                                     },
                                     onError: (message) => {
                                         throw new Error(message);
@@ -511,6 +518,18 @@ function DesignWorkspace({
                             throw new Error(
                                 `Canvas ${k} tidak menghasilkan kode yang bisa dibaca.`,
                             );
+                        }
+
+                        // A cut-off refine would replace a working page with a
+                        // broken one; a cut-off first draft still beats nothing.
+                        if (truncated && mode === 'refine') {
+                            throw new Error(
+                                `Canvas ${k} terpotong di batas output model, jadi versi sebelumnya dipertahankan. Coba instruksi yang lebih spesifik atau model lain.`,
+                            );
+                        }
+
+                        if (truncated) {
+                            truncatedKinds.push(k);
                         }
 
                         // Refining an older version must branch from THAT point,
@@ -591,6 +610,12 @@ function DesignWorkspace({
                 }
 
                 await persistDesign(nextMap, mode === 'generate');
+            }
+
+            if (truncatedKinds.length) {
+                toast.warning(
+                    `Canvas ${truncatedKinds.join(', ')} terpotong di batas output model. Periksa bagian akhir halaman.`,
+                );
             }
 
             const failed = targetKinds.filter((k) => !results[k]);

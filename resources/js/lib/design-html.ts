@@ -1,5 +1,11 @@
 import type { DesignKind } from '@/types';
 
+/**
+ * Messages saved per canvas (about 20 versions). The save request accepts 60,
+ * and each version is a whole HTML document.
+ */
+export const MAX_SAVED_MESSAGES = 40;
+
 export function deriveTitle(prompt: string, kind: DesignKind) {
     const clean = prompt.replace(/\s+/g, ' ').trim();
 

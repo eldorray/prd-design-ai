@@ -72,9 +72,10 @@ class DesignExportController extends Controller
         $css = '';
         $js = '';
 
-        // Extract and remove inline <style> blocks.
+        // Extract and remove inline <style> blocks. One with a media query
+        // stays put: in style.css it would apply everywhere.
         $html = preg_replace_callback(
-            '/<style\b[^>]*>(.*?)<\/style>/is',
+            '/<style\b(?![^>]*\bmedia=)[^>]*>(.*?)<\/style>/is',
             function (array $matches) use (&$css): string {
                 $css .= trim($matches[1])."\n";
 
@@ -83,9 +84,11 @@ class DesignExportController extends Controller
             $document,
         ) ?? $document;
 
-        // Extract and remove inline <script> blocks that have no src attribute.
+        // Extract and remove inline classic scripts (no src, no type other than
+        // JavaScript). JSON data blocks and modules stay inline: concatenated
+        // into script.js they are syntax errors that stop every other script.
         $html = preg_replace_callback(
-            '/<script\b(?![^>]*\bsrc=)[^>]*>(.*?)<\/script>/is',
+            '/<script\b(?![^>]*\bsrc=)(?![^>]*\btype=(?!["\']?(?:text|application)\/javascript))[^>]*>(.*?)<\/script>/is',
             function (array $matches) use (&$js): string {
                 $js .= trim($matches[1])."\n";
 
